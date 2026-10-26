@@ -1,10 +1,12 @@
 #Task 1
 #Task requirement: Dataset, Preprocessing, and Splitting
-#Task overview: Load and preprocess CIFAR-10 color images from Kaggle inputs, generate normalized grayscale inputs [0, 1] and color targets [0, 1], perform data sanity checks via visualization and distribution plots, split into 70% training, 20% validation, and 10% testing sets, and divide training data into batches of 100 samples each.
+#Task overview: Load and preprocess CIFAR-10 color images, generate normalized grayscale inputs [0, 1] and color targets [0, 1], perform data sanity checks via visualization and distribution plots, split into 70% training, 20% validation, and 10% testing sets, and divide training data into batches of 100 samples each.
 
 import os
 import glob
 import pickle
+import urllib.request
+import tarfile
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -26,30 +28,47 @@ print("CSEN1121 CINN Project — Task 1: Dataset, Preprocessing, and Splitting")
 print("================================================================================")
 
 # ==============================================================================
-# 2. Dataset Discovery & Loading from Kaggle Input
+# 2. Dataset Discovery (Handles Kaggle Upload, Kaggle Dataset, Local & Auto-download)
 # ==============================================================================
-# Directly locate CIFAR-10 in Kaggle input directory (or local workspace)
-search_candidates = [
-    "/kaggle/input/**/batches.meta",
-    "../input/**/batches.meta",
-    "./**/batches.meta"
-]
+# 2a. Check if extracted batches.meta already exists anywhere in input or workspace
+candidate_meta = (
+    glob.glob("/kaggle/input/**/batches.meta", recursive=True) +
+    glob.glob("../input/**/batches.meta", recursive=True) +
+    glob.glob("./**/batches.meta", recursive=True)
+)
 
 cifar_dir = None
-for candidate in search_candidates:
-    matches = glob.glob(candidate, recursive=True)
-    if matches:
-        cifar_dir = os.path.dirname(matches[0])
-        break
-
-if cifar_dir is None:
-    raise FileNotFoundError(
-        "CIFAR-10 dataset not found in /kaggle/input/!\n"
-        "Please click '+ Add Input' on the top-right of your Kaggle notebook, "
-        "search for 'cifar-10-python', and attach it to your notebook."
+if candidate_meta:
+    cifar_dir = os.path.dirname(candidate_meta[0])
+    print(f"\n[Step 1] Found extracted CIFAR-10 directory at: {cifar_dir}")
+else:
+    # 2b. Check if user uploaded cifar-10-python.tar.gz directly to Kaggle input
+    tar_candidates = (
+        glob.glob("/kaggle/input/**/cifar-10-python.tar.gz", recursive=True) +
+        glob.glob("/kaggle/input/**/*.tar.gz", recursive=True) +
+        glob.glob("../input/**/*.tar.gz", recursive=True) +
+        glob.glob("./cifar_data/*.tar.gz")
     )
+    
+    os.makedirs("cifar_data", exist_ok=True)
+    if tar_candidates:
+        uploaded_tar = tar_candidates[0]
+        print(f"\n[Step 1] Detected uploaded archive at: {uploaded_tar}")
+        print("[Step 1] Extracting dataset archive...")
+        with tarfile.open(uploaded_tar, "r:gz") as tar:
+            tar.extractall("cifar_data")
+        cifar_dir = "cifar_data/cifar-10-batches-py"
+    else:
+        # 2c. Fallback: Auto-download from official URL if internet is enabled
+        print("\n[Step 1] Archive not found in input. Downloading from official repository...")
+        tar_path = "cifar_data/cifar-10-python.tar.gz"
+        cifar_url = "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"
+        urllib.request.urlretrieve(cifar_url, tar_path)
+        with tarfile.open(tar_path, "r:gz") as tar:
+            tar.extractall("cifar_data")
+        cifar_dir = "cifar_data/cifar-10-batches-py"
 
-print(f"\n[Step 1] CIFAR-10 dataset loaded directly from: {cifar_dir}")
+print(f"[Step 1] CIFAR-10 ready at: {cifar_dir}")
 
 # Read metadata for label names
 meta_file = os.path.join(cifar_dir, "batches.meta")
@@ -153,7 +172,6 @@ for i in range(num_vis):
 plt.suptitle(f"Task 1 Sanity Check: Sample Grayscale Inputs vs. Color Targets ({TARGET_SIZE[0]}x{TARGET_SIZE[1]})",
              fontsize=13, fontweight="bold", y=1.03)
 plt.tight_layout()
-plt.savefig("task1_sanity_check_pairs.png", dpi=200, bbox_inches="tight")
 plt.show()
 
 # Visualization 2: Pixel-Value Distribution Histograms
@@ -177,7 +195,6 @@ axes_dist[1].legend(loc="upper right", frameon=True)
 axes_dist[1].grid(True, linestyle="--", alpha=0.5)
 
 plt.tight_layout()
-plt.savefig("task1_pixel_distributions.png", dpi=200, bbox_inches="tight")
 plt.show()
 
 # Quantitative Distribution Summary
@@ -221,12 +238,8 @@ print(f"  • Testing set    : {X_test.shape[0]} samples ({X_test.shape[0]/TOTAL
 num_train_batches = len(X_train) // BATCH_SIZE
 
 # Create list of batches
-X_train_batches = [X_train[i * BATCH_SIZE : (i + 1) * BATCH_SIZE] for i in range(num_train_batches)]
-Y_train_batches = [Y_train[i * BATCH_SIZE : (i + 1) * BATCH_SIZE] for i in range(num_train_batches)]
-
-# Convert to 3D NumPy arrays: (num_batches, batch_size, num_features)
-X_train_batches = np.array(X_train_batches)
-Y_train_batches = np.array(Y_train_batches)
+X_train_batches = np.array([X_train[i * BATCH_SIZE : (i + 1) * BATCH_SIZE] for i in range(num_train_batches)])
+Y_train_batches = np.array([Y_train[i * BATCH_SIZE : (i + 1) * BATCH_SIZE] for i in range(num_train_batches)])
 
 print("\n[Step 6] Dividing Training Data into Batches of 100:")
 print(f"  • Total training mini-batches : {len(X_train_batches)}")
