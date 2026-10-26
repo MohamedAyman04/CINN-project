@@ -1,12 +1,10 @@
 #Task 1
 #Task requirement: Dataset, Preprocessing, and Splitting
-#Task overview: Load and preprocess CIFAR-10 color images, generate normalized grayscale inputs [0, 1] and color targets [0, 1], perform data sanity checks via visualization and distribution plots, split into 70% training, 20% validation, and 10% testing sets, and divide training data into batches of 100 samples each.
+#Task overview: Load and preprocess CIFAR-10 color images from Kaggle inputs, generate normalized grayscale inputs [0, 1] and color targets [0, 1], perform data sanity checks via visualization and distribution plots, split into 70% training, 20% validation, and 10% testing sets, and divide training data into batches of 100 samples each.
 
 import os
 import glob
 import pickle
-import urllib.request
-import tarfile
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -17,50 +15,41 @@ RANDOM_SEED = 42
 np.random.seed(RANDOM_SEED)
 
 # Hyperparameters for dataset preparation
-# Using 16x16 downsampling: keep images small so from-scratch backpropagation
-# and subsequent Task 5 (Genetic Algorithm) remain computationally feasible.
+# Using 16x16 downsampling: keeps the model lightweight (~65k parameters)
+# so from-scratch backpropagation and Task 5 (Genetic Algorithm) remain computationally feasible.
 TARGET_SIZE = (16, 16)
 TOTAL_SAMPLES = 2000        # 70% = 1400 (14 batches of 100), 20% = 400, 10% = 200
-BATCH_SIZE = 100            # Specified in requirement 6
+BATCH_SIZE = 100            # Specified in Requirement 6
 
 print("================================================================================")
 print("CSEN1121 CINN Project — Task 1: Dataset, Preprocessing, and Splitting")
 print("================================================================================")
 
 # ==============================================================================
-# 2. Dataset Acquisition & Loading (CIFAR-10)
+# 2. Dataset Discovery & Loading from Kaggle Input
 # ==============================================================================
-# Check potential locations (Kaggle inputs, local workspace, or auto-download)
-candidate_patterns = [
-    "cifar_data/cifar-10-batches-py",
-    "/kaggle/input/*cifar-10*/**",
-    "../input/*cifar-10*/**"
+# Directly locate CIFAR-10 in Kaggle input directory (or local workspace)
+search_candidates = [
+    "/kaggle/input/**/batches.meta",
+    "../input/**/batches.meta",
+    "./**/batches.meta"
 ]
 
 cifar_dir = None
-for pattern in candidate_patterns:
-    for match in glob.glob(pattern, recursive=True):
-        if os.path.exists(os.path.join(match, "batches.meta")):
-            cifar_dir = match
-            break
-    if cifar_dir:
+for candidate in search_candidates:
+    matches = glob.glob(candidate, recursive=True)
+    if matches:
+        cifar_dir = os.path.dirname(matches[0])
         break
 
-# Auto-download CIFAR-10 if not found locally or in Kaggle inputs
 if cifar_dir is None:
-    os.makedirs("cifar_data", exist_ok=True)
-    tar_path = "cifar_data/cifar-10-python.tar.gz"
-    if not os.path.exists(tar_path):
-        cifar_url = "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"
-        print("\n[Step 1] Downloading CIFAR-10 dataset archive...")
-        urllib.request.urlretrieve(cifar_url, tar_path)
-    print("[Step 1] Extracting dataset archive...")
-    with tarfile.open(tar_path, "r:gz") as tar:
-        tar.extractall("cifar_data")
-    cifar_dir = "cifar_data/cifar-10-batches-py"
-    print("[Step 1] Dataset ready at:", cifar_dir)
-else:
-    print(f"\n[Step 1] CIFAR-10 dataset detected at: {cifar_dir}")
+    raise FileNotFoundError(
+        "CIFAR-10 dataset not found in /kaggle/input/!\n"
+        "Please click '+ Add Input' on the top-right of your Kaggle notebook, "
+        "search for 'cifar-10-python', and attach it to your notebook."
+    )
+
+print(f"\n[Step 1] CIFAR-10 dataset loaded directly from: {cifar_dir}")
 
 # Read metadata for label names
 meta_file = os.path.join(cifar_dir, "batches.meta")

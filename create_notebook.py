@@ -1,7 +1,7 @@
 import json
 
-# Read task1.py source code
-with open("task1.py", "r") as f:
+# Read task1/task1.py source code
+with open("task1/task1.py", "r") as f:
     task1_code = f.read()
 
 notebook = {
