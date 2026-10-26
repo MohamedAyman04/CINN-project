@@ -44,6 +44,7 @@ The objective of this course project is **Image Colorization**: training a neura
 ---
 
 ## Running in Kaggle
-1. Upload `CINN_WS2026_Project_[Teamname].ipynb` or create a new Python Notebook on Kaggle.
-2. In the right-hand sidebar under **Settings**, ensure **Internet** is toggled **ON** (so the dataset downloads automatically in ~5 seconds).
-3. Run the single Task 1 cell block. It will download/extract CIFAR-10, normalize, plot sanity distributions inline, split, and batch the data ready for Task 2.
+1. Open or upload `CINN_WS2026_Project_404_Intelligence_Not_Found.ipynb` in Kaggle.
+2. In the top right corner of the Kaggle notebook, click **`+ Add Input`**.
+3. Search for **`cifar-10-python`** and click **Add** (the dataset mounts to `/kaggle/input/...`).
+4. Run the Task 1 cell block. It directly accesses the Kaggle input without downloading anything, performs the preprocessing, plots distributions inline, splits, and batches the data ready for Task 2.
