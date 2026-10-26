@@ -1,0 +1,6 @@
+# Ignore large dataset downloads and caches
+cifar_data/
+*.tar.gz
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
