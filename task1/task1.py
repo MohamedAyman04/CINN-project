@@ -20,16 +20,37 @@ BATCH_SIZE = 100
 # 1. Locate or extract the CIFAR-10 dataset
 meta_matches = glob.glob("/kaggle/input/**/batches.meta", recursive=True) + glob.glob("./**/batches.meta", recursive=True)
 
+cifar_dir = None
 if meta_matches:
     cifar_dir = os.path.dirname(meta_matches[0])
 else:
-    tar_matches = glob.glob("/kaggle/input/**/*.tar.gz", recursive=True) + glob.glob("./**/*.tar.gz", recursive=True)
-    if not tar_matches:
-        raise FileNotFoundError("Could not find CIFAR-10 dataset in /kaggle/input or local folder.")
+    # Check all files in /kaggle/input or local workspace to find and extract the archive
+    search_dirs = ["/kaggle/input", "../input", "."]
+    candidate_files = []
+    for base in search_dirs:
+        if os.path.exists(base):
+            for root, _, files in os.walk(base):
+                if ".git" in root or "__pycache__" in root:
+                    continue
+                for f in files:
+                    candidate_files.append(os.path.join(root, f))
+
     os.makedirs("cifar_data", exist_ok=True)
-    with tarfile.open(tar_matches[0], "r:gz") as tar:
-        tar.extractall("cifar_data")
-    cifar_dir = "cifar_data/cifar-10-batches-py"
+    for path in candidate_files:
+        try:
+            with tarfile.open(path) as tar:
+                names = tar.getnames()
+                if any("batches.meta" in n or "data_batch" in n for n in names):
+                    tar.extractall("cifar_data")
+                    extracted = glob.glob("cifar_data/**/batches.meta", recursive=True)
+                    if extracted:
+                        cifar_dir = os.path.dirname(extracted[0])
+                        break
+        except Exception:
+            continue
+
+if cifar_dir is None:
+    raise FileNotFoundError("Could not find CIFAR-10 dataset in /kaggle/input or local folder.")
 
 print("Using dataset path:", cifar_dir)
 
