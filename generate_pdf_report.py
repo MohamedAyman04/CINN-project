@@ -20,22 +20,22 @@ html_content = f"""<!DOCTYPE html>
 <style>
     @page {{
         size: A4;
-        margin: 20mm 15mm 20mm 15mm;
+        margin: 15mm 14mm 15mm 14mm;
         @bottom-right {{
             content: "Page " counter(page) " of " counter(pages);
-            font-size: 9pt;
+            font-size: 8.5pt;
             color: #718096;
         }}
         @bottom-left {{
             content: "CSEN1121 — CINN Course Project Report (Winter 2026)";
-            font-size: 9pt;
+            font-size: 8.5pt;
             color: #718096;
         }}
     }}
     body {{
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        font-size: 10.5pt;
-        line-height: 1.5;
+        font-size: 9.8pt;
+        line-height: 1.42;
         color: #2D3748;
         margin: 0;
     }}
@@ -100,8 +100,9 @@ html_content = f"""<!DOCTYPE html>
     table.data-table {{
         width: 100%;
         border-collapse: collapse;
-        margin: 12px 0;
-        font-size: 9pt;
+        margin: 10px 0;
+        font-size: 8.8pt;
+        page-break-inside: avoid;
     }}
     table.data-table th, table.data-table td {{
         border: 1px solid #CBD5E0;
