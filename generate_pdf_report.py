@@ -9,14 +9,14 @@ def get_b64_image(path):
             return "data:image/png;base64," + base64.b64encode(f.read()).decode("utf-8")
     return ""
 
-img_pairs_b64 = get_b64_image("task1/task1_sanity_check_pairs.png")
-img_dist_b64 = get_b64_image("task1/task1_pixel_distributions.png")
+img_pairs_b64 = get_b64_image("task1_sanity_check_pairs.png")
+img_dist_b64 = get_b64_image("task1_pixel_distributions.png")
 
 html_content = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>CSEN1121 Course Project Report — Task 1</title>
+<title>CINN Course Project Report — Task 1</title>
 <style>
     @page {{
         size: A4;
@@ -27,7 +27,7 @@ html_content = f"""<!DOCTYPE html>
             color: #718096;
         }}
         @bottom-left {{
-            content: "CSEN1121 — CINN Course Project Report (Winter 2026)";
+            content: "DMET902 / CSEN1121 — Course Project Report (Winter 2026)";
             font-size: 8.5pt;
             color: #718096;
         }}
@@ -43,21 +43,21 @@ html_content = f"""<!DOCTYPE html>
         text-align: center;
         border-bottom: 2px solid #E2E8F0;
         padding-bottom: 15px;
-        margin-bottom: 20px;
+        margin-bottom: 18px;
     }}
     .header h1 {{
-        font-size: 18pt;
+        font-size: 17pt;
         margin: 0 0 4px 0;
         color: #1A202C;
     }}
     .header h2 {{
-        font-size: 13pt;
+        font-size: 12.5pt;
         font-weight: 600;
         margin: 0 0 6px 0;
         color: #4A5568;
     }}
     .header p {{
-        font-size: 10pt;
+        font-size: 9.5pt;
         margin: 2px 0;
         color: #718096;
     }}
@@ -66,7 +66,7 @@ html_content = f"""<!DOCTYPE html>
         border: 1px solid #E2E8F0;
         border-radius: 6px;
         padding: 12px 16px;
-        margin-bottom: 20px;
+        margin-bottom: 18px;
     }}
     .meta-box table {{
         width: 100%;
@@ -82,11 +82,11 @@ html_content = f"""<!DOCTYPE html>
         width: 25%;
     }}
     h2.section-title {{
-        font-size: 13pt;
+        font-size: 12.5pt;
         color: #2B6CB0;
         border-bottom: 1.5px solid #E2E8F0;
         padding-bottom: 4px;
-        margin-top: 22px;
+        margin-top: 20px;
         margin-bottom: 10px;
         page-break-after: avoid;
     }}
@@ -171,9 +171,9 @@ html_content = f"""<!DOCTYPE html>
 
 <div class="header">
     <p style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #4A5568;">German University in Cairo (GUC) • Faculty of Media Engineering & Technology</p>
-    <h1>CSEN1121 — Computational Intelligence & Neural Networks</h1>
-    <h2>Winter Semester 2026 — Course Project Report</h2>
-    <p>Instructors: Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Dinah Waref Shalaby</p>
+    <h1>DMET902 — Advanced Video Processing / CSEN1121</h1>
+    <h2>CINN Project — Winter Semester 2026</h2>
+    <p>Instructors: Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary</p>
 </div>
 
 <div class="meta-box">
@@ -249,7 +249,7 @@ html_content = f"""<!DOCTYPE html>
 
 <h2 class="section-title">1. Executive Summary & Objective</h2>
 <p>
-The objective of the CINN1121 course project is to build an end-to-end image colorization engine implemented entirely from scratch without high-level deep learning frameworks (e.g. PyTorch, Keras, TensorFlow). The system learns to map single-channel grayscale images to plausible 3-channel RGB color representations, first through analytical backpropagation (Task 3) and subsequently through evolutionary weight optimization via a Genetic Algorithm (Task 5).
+The objective of the CINN course project is to build an end-to-end image colorization engine implemented entirely from scratch without high-level deep learning frameworks (e.g. PyTorch, Keras, TensorFlow). The system learns to map single-channel grayscale images to plausible 3-channel RGB color representations, first through analytical backpropagation (Task 3) and subsequently through evolutionary weight optimization via a Genetic Algorithm (Task 5).
 </p>
 <p>
 Task 1 establishes the mathematical and operational data pipeline required for all downstream tasks. It guarantees that images are cleanly preprocessed, appropriately sized, verified through statistical and visual sanity checks, and cleanly partitioned into training, validation, and testing mini-batches.

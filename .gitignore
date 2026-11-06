@@ -4,3 +4,4 @@ cifar_data/
 __pycache__/
 .ipynb_checkpoints/
 *.pyc
+*with_dataset.zip

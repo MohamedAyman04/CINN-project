@@ -1,4 +1,4 @@
-# CSEN1121 — Computational Intelligence and Neural Networks
+# DMET902 — Advanced Video Processing / CSEN1121
 ## Winter Semester 2026 — Course Project Report
 
 **Faculty of Media Engineering and Technology**  
@@ -8,8 +8,8 @@
 
 ### Project & Submission Overview
 
-* **Course:** CSEN1121 — Computational Intelligence and Neural Networks (Winter Semester 2026)
-* **Instructors:** Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Dinah Waref Shalaby
+* **Course:** DMET902 — Advanced Video Processing / CSEN1121 (Winter Semester 2026)
+* **Instructors:** Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary
 * **Project Title:** Image Colorization Using From-Scratch Neural Networks & Genetic Algorithm Optimization
 * **Milestone:** **Task 1 — Dataset, Preprocessing, and Splitting (10 Marks)**
 * **Task 1 Due Date:** Friday, 06/11/2026
