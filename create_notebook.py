@@ -344,7 +344,7 @@ notebook = {
                 "## Faculty of Media Engineering and Technology\n",
                 "### DMET902 — Advanced Video Processing / CSEN1121 — Computational Intelligence and Neural Networks\n",
                 "**Winter Semester 2026 — Course Project**  \n",
-                "**Instructors:** Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary  \n",
+                "**Instructors:** Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary, Eng. Dina Waref Lamei Shalaby  \n",
                 "\n",
                 "---\n",
                 "### Team & Submission Information\n",

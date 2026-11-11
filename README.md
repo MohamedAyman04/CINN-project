@@ -3,7 +3,7 @@
 
 **Institution:** German University in Cairo (GUC)  
 **Faculty:** Media Engineering and Technology  
-**Instructors:** Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Dinah Waref Shalaby  
+**Instructors:** Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary, Eng. Dina Waref Lamei Shalaby  
 
 ---
 

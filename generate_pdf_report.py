@@ -183,7 +183,7 @@ html_content = f"""<!DOCTYPE html>
     <p style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #4A5568;">German University in Cairo (GUC) • Faculty of Media Engineering & Technology</p>
     <h1>DMET902 — Advanced Video Processing / CSEN1121</h1>
     <h2>CINN Project — Winter Semester 2026</h2>
-    <p>Instructors: Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary</p>
+    <p>Instructors: Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary, Eng. Dina Waref Lamei Shalaby</p>
 </div>
 
 <div class="meta-box">

@@ -9,7 +9,7 @@
 ### Project & Submission Overview
 
 * **Course:** DMET902 — Advanced Video Processing / CSEN1121 (Winter Semester 2026)
-* **Instructors:** Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary
+* **Instructors:** Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary, Eng. Dina Waref Lamei Shalaby
 * **Project Title:** Image Colorization Using From-Scratch Neural Networks & Genetic Algorithm Optimization
 * **Milestone:** **Task 1 — Dataset, Preprocessing, and Splitting (10 Marks)** & **Task 2 — Neural Network Architecture (15 Marks)**
 * **Task 2 Deadline:** Sunday, 15/11/2026
