@@ -283,11 +283,9 @@ Downsampled(i, j, c) = &frac14; &sum;<sub>u=0</sub><sup>1</sup> &sum;<sub>v=0</s
 </p>
 <ul>
     <li><strong>Feature Dimensionality at 32×32:</strong> Input = 1,024 grayscale features; Output = 3,072 RGB features. A single hidden layer of 128 neurons requires (1,024 × 128) + (128 × 3,072) &approx; <strong>524,288 weights</strong>.</li>
-    <li><strong>Feature Dimensionality at 16×16:</strong> Input = 256 grayscale features; Output = 768 RGB features. Two hidden layers of [128, 64] require <strong>91,072 parameters</strong> — an <strong>8&times; reduction in computational complexity</strong>.</li>
-    <li><strong>Critical for Task 5 (Genetic Algorithm):</strong> Chromosomes representing 500k+ real-valued parameters across a population of 50 individuals suffer from severe curse of dimensionality and convergence stagnation. At 16×16 (~91k weights), the genetic algorithm evaluates fitness and converges efficiently.</li>
+    <li><strong>Feature Dimensionality at 16×16:</strong> Input = 256 grayscale features; Output = 768 RGB features. Two hidden layers of [128, 128] require <strong>148,480 parameters</strong> — a <strong>3.5&times; reduction in computational complexity</strong> compared to 32×32.</li>
+    <li><strong>Critical for Task 5 (Genetic Algorithm):</strong> Chromosomes representing 500k+ real-valued parameters across a population of 50 individuals suffer from severe curse of dimensionality and convergence stagnation. At 16×16 (148,480 weights and biases), both analytical backpropagation and evolutionary search converge efficiently.</li>
 </ul>
-
-<div class="page-break"></div>
 
 <h2 class="section-title">4. Preprocessing & Feature Engineering</h2>
 <ol>
@@ -369,10 +367,10 @@ Downsampled(i, j, c) = &frac14; &sum;<sub>u=0</sub><sup>1</sup> &sum;<sub>v=0</s
 In accordance with Task 2 specifications:
 </p>
 <ol>
-    <li><strong>Implementation Paradigm:</strong> Pure object-oriented Python class (<code>ColorizationNN</code>) using native NumPy array/matrix operations (<code>np.dot</code>). Pre-built layer or model classes (<code>torch.nn</code>, <code>keras.layers</code>, <code>sklearn</code>) are strictly prohibited and avoided.</li>
+    <li><strong>Implementation Paradigm:</strong> Pure object-oriented Python class (<code>NeuralNetwork</code>) using native NumPy array/matrix operations (<code>@</code> matrix operator). Pre-built layer or model classes (<code>torch.nn</code>, <code>keras.layers</code>, <code>sklearn</code>) are strictly prohibited and avoided.</li>
     <li><strong>Input Layer Size:</strong> <code>n_in = 256</code> features, corresponding to flattened 16×16 grayscale pixel intensities.</li>
     <li><strong>Output Layer Size:</strong> <code>n_out = 768</code> features, corresponding to flattened 16×16×3 RGB color channel values.</li>
-    <li><strong>Hidden Layer Topology:</strong> A deep two-hidden-layer MLP architecture [128, 64] was chosen to provide non-linear capacity for learning luminance-to-chrominance mapping while maintaining parameter tractability.</li>
+    <li><strong>Hidden Layer Topology:</strong> A balanced two-hidden-layer MLP architecture [128, 128] was chosen to provide non-linear capacity for learning luminance-to-chrominance mapping while maintaining parameter tractability.</li>
 </ol>
 
 <h3 class="subsection-title">Layer Dimension & Parameter Breakdown:</h3>
@@ -401,20 +399,20 @@ In accordance with Task 2 specifications:
         <tr>
             <td><strong>Hidden Layer 2</strong></td>
             <td class="center-text">128</td>
-            <td class="center-text">64</td>
-            <td class="center-text">(128, 64)</td>
-            <td class="center-text">(1, 64)</td>
+            <td class="center-text">128</td>
+            <td class="center-text">(128, 128)</td>
+            <td class="center-text">(1, 128)</td>
             <td class="center-text"><strong>ReLU</strong></td>
-            <td class="center-text">8,256</td>
+            <td class="center-text">16,512</td>
         </tr>
         <tr>
             <td><strong>Output Layer</strong></td>
-            <td class="center-text">64</td>
+            <td class="center-text">128</td>
             <td class="center-text">768</td>
-            <td class="center-text">(64, 768)</td>
+            <td class="center-text">(128, 768)</td>
             <td class="center-text">(1, 768)</td>
             <td class="center-text"><strong>Sigmoid</strong></td>
-            <td class="center-text">49,920</td>
+            <td class="center-text">99,072</td>
         </tr>
         <tr style="font-weight: 600; background: #EDF2F7;">
             <td>Total</td>
@@ -423,17 +421,17 @@ In accordance with Task 2 specifications:
             <td class="center-text">—</td>
             <td class="center-text">—</td>
             <td class="center-text">—</td>
-            <td class="center-text"><strong>91,072 parameters</strong></td>
+            <td class="center-text"><strong>148,480 parameters</strong></td>
         </tr>
     </tbody>
 </table>
 
 <h2 class="section-title">8. Activation Functions Implemented From Scratch</h2>
 <p>
-<strong>Hidden Layers (ReLU):</strong> <code>f(z) = max(0, z)</code>. Implemented manually using <code>np.maximum(0, z)</code>. ReLU prevents gradient attenuation across layers, computes with extreme efficiency, and enables the network to isolate complex non-linear luminance features.
+<strong>Hidden Layers (ReLU & Derivative):</strong> <code>f(z) = max(0, z)</code> and analytical derivative <code>f'(z) = 1 if z > 0 else 0</code>. Implemented manually using <code>np.maximum(0, z)</code> and <code>(z > 0).astype(float)</code>. ReLU prevents gradient attenuation across layers, computes with extreme efficiency, and prepares the model for Task 3 Backpropagation.
 </p>
 <p>
-<strong>Output Layer (Sigmoid):</strong> <code>g(z) = 1 / (1 + exp(-clip(z, -500, 500)))</code>. As mandated by Task 2 Requirement 4 (<em>"matched to your normalized color range"</em>), target color pixels reside strictly in [0.0, 1.0]. The Sigmoid function naturally bounds all output predictions to (0, 1), guaranteeing that all generated RGB values are physically valid without artificial post-hoc clamping.
+<strong>Output Layer (Sigmoid & Derivative):</strong> <code>&sigma;(z) = 1 / (1 + exp(-clip(z, -500, 500)))</code> with analytical derivative <code>&sigma;'(z) = &sigma;(z) &times; (1 - &sigma;(z))</code>. As mandated by Task 2 Requirement 4 (<em>"matched to your normalized color range"</em>), target color pixels reside strictly in [0.0, 1.0]. The Sigmoid function naturally squashes all output activations into (0, 1), guaranteeing valid normalized RGB values without artificial clamping.
 </p>
 
 <h2 class="section-title">9. Weight and Bias Initialization Strategy</h2>
@@ -443,28 +441,26 @@ Weights and biases are initialized from scratch without external initializers:
 <ul>
     <li><strong>ReLU Hidden Layers:</strong> Initialized using He/Kaiming normal scaling: <code>W ~ N(0, sqrt(2 / n_in))</code>. This preserves activation variance across layers, avoiding premature vanishing or exploding gradients.</li>
     <li><strong>Sigmoid Output Layer:</strong> Initialized using Xavier/Glorot normal scaling: <code>W ~ N(0, sqrt(1 / n_in))</code>, tailored for logistic units.</li>
-    <li><strong>Biases:</strong> Initialized to zero vectors: <code>b = np.zeros((1, n_out))</code>.</li>
+    <li><strong>Biases:</strong> Initialized with small Gaussian noise scaled by 0.01: <code>b = np.random.randn(1, n_out) * 0.01</code> to break initial symmetry across neurons.</li>
 </ul>
 
 <h2 class="section-title">10. Forward Pass Propagation & Caching Mechanism</h2>
 <p>
 The forward pass is evaluated using vectorized NumPy operations:
-<code>Z1 = X &bull; W1 + b1, A1 = ReLU(Z1)</code> &rarr;
-<code>Z2 = A1 &bull; W2 + b2, A2 = ReLU(Z2)</code> &rarr;
-<code>Z3 = A2 &bull; W3 + b3, Y_hat = Sigmoid(Z3)</code>.
-To prepare directly for <strong>Task 3 (Backpropagation)</strong>, all intermediate pre-activations (Z) and activations (A) are cached in a dictionary during execution.
+<code>Z1 = X @ W1 + b1, A1 = ReLU(Z1)</code> &rarr;
+<code>Z2 = A1 @ W2 + b2, A2 = ReLU(Z2)</code> &rarr;
+<code>Z3 = A2 @ W3 + b3, Y_hat = Sigmoid(Z3)</code>.
+To prepare directly for <strong>Task 3 (Backpropagation)</strong>, all intermediate pre-activations (Z) and activations (A) are stored in lists directly on the network instance (<code>self.Z</code> and <code>self.A</code>) during execution.
 </p>
 
 <h2 class="section-title">11. Genetic Algorithm Chromosome Compatibility (Task 5 Foresight)</h2>
 <p>
-To satisfy Task 5 (<em>"represent each individual as a full set of weights"</em>), <code>ColorizationNN</code> provides:
+To satisfy Task 5 (<em>"represent each individual as a full set of weights"</em>), the clean modular structure of <code>NeuralNetwork</code> provides:
 </p>
 <ul>
-    <li><code>get_params_vector()</code>: Serializes all 91,072 weights and biases into a continuous 1D chromosome.</li>
-    <li><code>set_params_vector(vector)</code>: Restores 2D weight and bias matrices from a 1D chromosome for fitness evaluation.</li>
+    <li><strong>Continuous Chromosome Representation:</strong> Concatenates all 148,480 weights and biases into a continuous 1D chromosome for evolutionary operators (crossover and Gaussian mutation).</li>
+    <li><strong>Matrix Deserialization:</strong> Allows mapping chromosome vectors directly back into <code>network.weights</code> and <code>network.biases</code> for validation batch fitness evaluation.</li>
 </ul>
-
-<div class="page-break"></div>
 
 <h2 class="section-title">12. Verification & Experimental Sanity Results</h2>
 <p>
@@ -472,13 +468,13 @@ The network was evaluated on batch 0 of the training set (<code>X_train_batches[
 </p>
 <ul>
     <li><strong>Input Shape:</strong> (100, 256) &rarr; <strong>Output Shape:</strong> (100, 768), perfectly matching (100, 16×16×3).</li>
-    <li><strong>Dynamic Range:</strong> Minimum predicted pixel intensity = 0.0520, Maximum = 0.9407 (strictly in [0, 1]).</li>
-    <li><strong>Initial Un-Trained MSE Loss:</strong> <strong>0.076719</strong>, matching theoretical expectations for random Sigmoid activations against normalized pixel values.</li>
+    <li><strong>Dynamic Range:</strong> Minimum predicted pixel intensity = <strong>0.0478</strong>, Maximum = <strong>0.9200</strong> (strictly bounded in [0, 1]).</li>
+    <li><strong>Initial Un-Trained MSE Loss:</strong> <strong>0.071109</strong>, matching theoretical expectations for random Sigmoid activations against naturally distributed normalized pixel values.</li>
 </ul>
 
 <div class="img-container">
     <img src="{img_task2_b64}" alt="Task 2 Initial Predictions">
-    <div class="img-caption">Figure 3: Task 2 Verification — Grayscale Input (top) vs. Initial Untrained Network Prediction (middle) vs. Ground Truth Target (bottom).</div>
+    <div class="img-caption">Figure 3: Task 2 Verification — Grayscale Input (top) vs. Initial Untrained Network Prediction (middle) vs. Ground Truth Target (bottom) across 6 sample images.</div>
 </div>
 
 <h2 class="section-title">13. Summary Compliance Matrix (Tasks 1 & 2)</h2>
@@ -538,7 +534,7 @@ The network was evaluated on batch 0 of the training set (<code>X_train_batches[
             <td><strong>Task 2.1</strong></td>
             <td>Network class built from scratch (no imported layer/model)</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td><code>ColorizationNN</code> class</td>
+            <td><code>NeuralNetwork</code> class</td>
         </tr>
         <tr>
             <td><strong>Task 2.2</strong></td>
@@ -556,13 +552,13 @@ The network was evaluated on batch 0 of the training set (<code>X_train_batches[
             <td><strong>Task 2.4</strong></td>
             <td>Hidden layers/neurons chosen, manual ReLU & Sigmoid</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td>[128, 64] with ReLU & Sigmoid</td>
+            <td>[128, 128] with ReLU, Sigmoid & derivatives</td>
         </tr>
         <tr>
             <td><strong>Task 2.5</strong></td>
             <td>Initialize weights & biases with small random values from scratch</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td>He/Xavier normal scaling & zero biases</td>
+            <td>He/Xavier normal scaling & Gaussian noise biases</td>
         </tr>
     </tbody>
 </table>

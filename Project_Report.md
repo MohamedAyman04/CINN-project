@@ -60,8 +60,8 @@ $$\text{Downsampled}(i, j, c) = \frac{1}{4} \sum_{u=0}^{1} \sum_{v=0}^{1} \text{
 ### Why $16 \times 16$ is the Optimal Design Choice:
 * **Feature Dimensionality Comparison:**
   * **At $32 \times 32$:** Input vector length $= 32 \times 32 = 1{,}024$ grayscale features. Output vector length $= 32 \times 32 \times 3 = 3{,}072$ RGB features. A standard hidden layer with 128 neurons requires $(1{,}024 \times 128) + (128 \times 3{,}072) \approx 524{,}288$ trainable parameters.
-  * **At $16 \times 16$:** Input vector length $= 16 \times 16 = 256$ grayscale features. Output vector length $= 16 \times 16 \times 3 = 768$ RGB features. Two hidden layers of $[128, 64]$ require $(256 \times 128) + (128 \times 64) + (64 \times 768) + 960 = 91{,}072$ parameters — an **$8\times$ reduction in computational complexity**.
-* **Impact on Task 5 (Genetic Algorithm):** Chromosomes representing 500k+ real-valued parameters across a population of 50 individuals suffer from severe curse-of-dimensionality degradation and memory bottlenecks. At $16 \times 16$ ($\approx 91{,}000$ weights), evolutionary search converges reliably and efficiently.
+  * **At $16 \times 16$:** Input vector length $= 16 \times 16 = 256$ grayscale features. Output vector length $= 16 \times 16 \times 3 = 768$ RGB features. Two hidden layers of $[128, 128]$ require $(256 \times 128) + 128 + (128 \times 128) + 128 + (128 \times 768) + 768 = 148{,}480$ parameters — a **$3.5\times$ reduction in computational complexity** compared to $32 \times 32$.
+* **Impact on Task 5 (Genetic Algorithm):** Chromosomes representing 500k+ real-valued parameters across a population of 50 individuals suffer from severe curse-of-dimensionality degradation and memory bottlenecks. At $16 \times 16$ ($148{,}480$ weights and biases), evolutionary search and backpropagation converge reliably and efficiently.
 
 ---
 
@@ -135,35 +135,51 @@ This 3D tensor layout allows matrix multiplication in Task 2 and vectorized grad
 ## 7. Neural Network Architecture Design
 
 In accordance with Task 2 specifications:
-1. **Implementation Paradigm:** Pure object-oriented Python class (`ColorizationNN`) using native NumPy array/matrix operations (`np.dot`). Pre-built layer or model classes (`torch.nn`, `keras.layers`, `sklearn`) are strictly prohibited and avoided.
+1. **Implementation Paradigm:** Pure object-oriented Python class (`NeuralNetwork`) using native NumPy array/matrix operations (`@` matrix multiplication). Pre-built layer or model classes (`torch.nn`, `keras.layers`, `sklearn`) are strictly prohibited and avoided.
 2. **Input Layer Size:** $n_{\text{in}} = 256$ features, corresponding to the flattened $16 \times 16$ grayscale pixel intensities.
 3. **Output Layer Size:** $n_{\text{out}} = 768$ features, corresponding to the flattened $16 \times 16 \times 3$ RGB color channel values.
-4. **Hidden Layer Topology:** A two-hidden-layer deep architecture $[128, 64]$ was selected:
+4. **Hidden Layer Topology:** A balanced two-hidden-layer deep architecture $[128, 128]$ was selected:
    * **Hidden Layer 1:** 128 neurons with **ReLU** activation.
-   * **Hidden Layer 2:** 64 neurons with **ReLU** activation.
+   * **Hidden Layer 2:** 128 neurons with **ReLU** activation.
    * **Output Layer:** 768 neurons with **Sigmoid** activation.
 
 ### Detailed Layer Dimension & Parameter Breakdown:
 | Layer | Input Dimension | Output Dimension | Weight Matrix ($W$) | Bias Vector ($b$) | Activation | Trainable Parameters |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Hidden Layer 1** | 256 | 128 | $(256, 128)$ | $(1, 128)$ | **ReLU** | $32{,}768 + 128 = \mathbf{32{,}896}$ |
-| **Hidden Layer 2** | 128 | 64 | $(128, 64)$ | $(1, 64)$ | **ReLU** | $8{,}192 + 64 = \mathbf{8{,}256}$ |
-| **Output Layer** | 64 | 768 | $(64, 768)$ | $(1, 768)$ | **Sigmoid** | $49{,}152 + 768 = \mathbf{49{,}920}$ |
-| **Total** | — | — | — | — | — | **$\mathbf{91{,}072}$ parameters** |
+| **Hidden Layer 2** | 128 | 128 | $(128, 128)$ | $(1, 128)$ | **ReLU** | $16{,}384 + 128 = \mathbf{16{,}512}$ |
+| **Output Layer** | 128 | 768 | $(128, 768)$ | $(1, 768)$ | **Sigmoid** | $98{,}304 + 768 = \mathbf{99{,}072}$ |
+| **Total** | — | — | — | — | — | **$\mathbf{148{,}480}$ parameters** |
 
 ---
 
 ## 8. Activation Functions Implemented From Scratch
 
-### 8.1 Rectified Linear Unit (ReLU) for Hidden Layers
-For hidden layers, ReLU is implemented manually from first principles:
-$$f(z) = \max(0, z)$$
-* **Mathematical Justification:** ReLU prevents vanishing gradients during backpropagation across multiple hidden layers and computes extremely fast in vectorized NumPy form (`np.maximum(0, z)`). It enables the network to learn complex piece-wise non-linear mappings from luminance patterns to chrominance values.
+### 8.1 Rectified Linear Unit (ReLU) & Derivative for Hidden Layers
+For hidden layers, ReLU and its analytical derivative are implemented manually from first principles:
+$$f(z) = \max(0, z), \qquad f'(z) = \begin{cases} 1 & \text{if } z > 0 \\ 0 & \text{if } z \le 0 \end{cases}$$
+```python
+def relu(z):
+    return np.maximum(0, z)
 
-### 8.2 Sigmoid for the Output Layer
-For the final color prediction layer, the Sigmoid function is implemented from scratch with numerical clipping:
-$$g(z) = \frac{1}{1 + e^{-z}}$$
-* **Mathematical Justification:** As mandated by Task 2 Requirement 4 (*"matched to your normalized color range"*), target RGB pixel values reside strictly in $[0.0, 1.0]$. The Sigmoid function naturally squashes pre-activations into the range $(0, 1)$. This guarantees that every predicted pixel value is a valid normalized RGB color without requiring artificial post-hoc clamping.
+def relu_derivative(z):
+    return (z > 0).astype(float)
+```
+* **Mathematical Justification:** ReLU avoids vanishing gradients across multiple hidden layers and computes with maximum vector efficiency in NumPy. The accompanying analytical derivative `relu_derivative(z)` pre-arms the engine for Task 3 Backpropagation.
+
+### 8.2 Sigmoid & Derivative for the Output Layer
+For the final color prediction layer, the Sigmoid function is implemented from scratch with numerical clipping to prevent `np.exp` overflow:
+$$\sigma(z) = \frac{1}{1 + e^{-z}}, \qquad \sigma'(z) = \sigma(z) \cdot (1 - \sigma(z))$$
+```python
+def sigmoid(z):
+    z = np.clip(z, -500, 500)
+    return 1 / (1 + np.exp(-z))
+
+def sigmoid_derivative(z):
+    s = sigmoid(z)
+    return s * (1 - s)
+```
+* **Mathematical Justification:** As mandated by Task 2 Requirement 4 (*"matched to your normalized color range"*), target RGB pixel values reside strictly in $[0.0, 1.0]$. The Sigmoid function naturally squashes pre-activations into $(0, 1)$. This guarantees every predicted pixel value is a mathematically valid normalized RGB color without requiring artificial post-hoc clamping.
 
 ---
 
@@ -173,41 +189,45 @@ Weights and biases are initialized from scratch without external library initial
 1. **Hidden Layers (He / Kaiming Normal):**
    $$W^{[l]} \sim \mathcal{N}\left(0, \sqrt{\frac{2}{n_{\text{in}}}}\right)$$
    ```python
-   scale = np.sqrt(2.0 / n_in)
+   scale = np.sqrt(2 / n_in)
    w = np.random.randn(n_in, n_out) * scale
    ```
-   This maintains variance across ReLU activations, preventing layer outputs from either vanishing to zero or exploding to infinity.
+   * Layer 1 ($n_{\text{in}} = 256$): $\sigma = \sqrt{2/256} = 0.0884$
+   * Layer 2 ($n_{\text{in}} = 128$): $\sigma = \sqrt{2/128} = 0.1250$
+   This maintains unit variance of activations across ReLU layers, preventing signals from vanishing to zero or exploding to infinity.
 2. **Output Layer (Xavier / Glorot Normal):**
    $$W^{[3]} \sim \mathcal{N}\left(0, \sqrt{\frac{1}{n_{\text{in}}}}\right)$$
-   Scaled appropriately for logistic Sigmoid units.
-3. **Biases:**
-   All bias vectors are initialized to zeros:
-   $$b^{[l]} = \mathbf{0}_{1 \times n_{\text{out}}}$$
    ```python
-   b = np.zeros((1, n_out))
+   scale = np.sqrt(1 / n_in)
+   w = np.random.randn(n_in, n_out) * scale
+   ```
+   * Layer 3 ($n_{\text{in}} = 128$): $\sigma = \sqrt{1/128} = 0.0884$, specifically tailored for logistic Sigmoid units.
+3. **Biases:**
+   Biases are initialized with small Gaussian perturbations scaled by $0.01$ to break initial symmetry across neurons:
+   $$b^{[l]} \sim \mathcal{N}(0, 0.01^2)$$
+   ```python
+   b = np.random.randn(1, n_out) * 0.01
    ```
 
 ---
 
 ## 10. Forward Pass Propagation & Caching Mechanism
 
-The forward pass is implemented via vectorized matrix multiplication:
+The forward pass is implemented via vectorized matrix multiplication (`@` operator):
 $$Z^{[1]} = X W^{[1]} + b^{[1]}, \quad A^{[1]} = \text{ReLU}(Z^{[1]})$$
 $$Z^{[2]} = A^{[1]} W^{[2]} + b^{[2]}, \quad A^{[2]} = \text{ReLU}(Z^{[2]})$$
 $$Z^{[3]} = A^{[2]} W^{[3]} + b^{[3]}, \quad \hat{Y} = A^{[3]} = \text{Sigmoid}(Z^{[3]})$$
 
 ### Forward Pass Cache:
-To prepare seamlessly for **Task 3 (Backpropagation)**, intermediate pre-activation values ($Z^{[1]}, Z^{[2]}, Z^{[3]}$) and activation matrices ($A^{[0]}=X, A^{[1]}, A^{[2]}, A^{[3]}=\hat{Y}$) are preserved in a dictionary cache during every forward evaluation.
+To prepare seamlessly for **Task 3 (Backpropagation)**, all linear combinations ($Z^{[1]}, Z^{[2]}, Z^{[3]}$) and activation matrices ($A^{[0]}=X, A^{[1]}, A^{[2]}, A^{[3]}=\hat{Y}$) are stored directly on the network instance (`self.Z = [...]` and `self.A = [...]`) during every forward propagation.
 
 ---
 
-## 11. Genetic Algorithm Chromosome Compatibility (Task 5 Foresight)
+## 11. Genetic Algorithm Chromosome Preparation (Task 5 Foresight)
 
-To satisfy Task 5 requirements (*"represent each individual as a full set of weights"*), the `ColorizationNN` class includes native serialization and deserialization routines:
-* `get_params_vector()`: Flattens all layer weights and bias vectors into a continuous 1D NumPy vector of length $91{,}072$.
-* `set_params_vector(vector)`: Unpacks a 1D chromosome directly into the corresponding weight and bias matrix shapes.
-
-This allows the Task 5 Genetic Algorithm to perform crossover, Gaussian mutation, and population fitness evaluation without touching or altering the network class.
+The clean, modular design of the `NeuralNetwork` weight matrices ($W_1, W_2, W_3$) and bias vectors ($b_1, b_2, b_3$) enables straightforward flattening into a continuous 1D chromosome of length $148{,}480$:
+* **Chromosome Encoding:** Concatenation of flattened weight and bias matrices.
+* **Evolutionary Operators:** Uniform/arithmetic crossover and Gaussian mutation operate directly on the continuous chromosome space, and candidate solutions are mapped back into `network.weights` and `network.biases` for forward fitness evaluation against validation batches.
 
 ---
 
@@ -216,10 +236,11 @@ This allows the Task 5 Genetic Algorithm to perform crossover, Gaussian mutation
 The architecture was evaluated on batch 0 of the training set from Task 1 (`X_train_batches[0]`):
 1. **Input Shape:** $(100, 256)$
 2. **Predicted Output Shape:** $(100, 768)$ — perfectly matches $(N, 16 \times 16 \times 3)$.
-3. **Dynamic Range:** Minimum predicted pixel intensity $= 0.0520$, Maximum $= 0.9407$. All values reside strictly in $[0.0, 1.0]$.
+3. **Dynamic Range:** Minimum predicted pixel intensity $= \mathbf{0.0478}$, Maximum $= \mathbf{0.9200}$. All predicted values reside strictly inside $[0.0, 1.0]$.
 4. **Initial Un-Trained MSE Loss:**
-   $$\text{MSE} = \frac{1}{N \cdot D} \sum_{i=1}^{N} \sum_{k=1}^{D} (\hat{Y}_{ik} - Y_{ik})^2 = \mathbf{0.076719}$$
+   $$\text{MSE} = \frac{1}{N \cdot D} \sum_{i=1}^{N} \sum_{k=1}^{D} (\hat{Y}_{ik} - Y_{ik})^2 = \mathbf{0.071109}$$
    This matches the theoretical expected error of randomly initialized Sigmoid outputs centered around $0.5$ against naturally distributed pixel intensities.
+5. **Visual Inspection:** Visualizing sample grayscale inputs, untrained network outputs, and ground-truth color targets confirms proper execution without spatial distortions. The untrained outputs render as a smooth, uniform tone characteristic of random initialization prior to gradient-based learning.
 
 ---
 
@@ -235,8 +256,8 @@ The architecture was evaluated on batch 0 of the training set from Task 1 (`X_tr
 | **Regulation 7** | Commented code explaining steps | **Complete** | Clean, student-style comments |
 | **Regulation 8** | Pure NumPy arithmetic, no pre-built layers | **Complete** | Scratch matrix operations only |
 | **Task 1.1 – 1.6** | Small dataset, Grayscale/RGB, Normalization, Sanity plots, 70/20/10 split, Batches of 100 | **Complete** | CIFAR-10 Animals, $16 \times 16$, 14 batches of 100 |
-| **Task 2.1** | Network class built from scratch (no imported layer/model) | **Complete** | `ColorizationNN` class in NumPy |
+| **Task 2.1** | Network class built from scratch (no imported layer/model) | **Complete** | `NeuralNetwork` class in NumPy |
 | **Task 2.2** | Input layer size = number of grayscale features | **Complete** | $n_{\text{in}} = 256$ features |
 | **Task 2.3** | Output layer size = number of color values | **Complete** | $n_{\text{out}} = 768$ features ($16 \times 16 \times 3$) |
-| **Task 2.4** | Hidden layers/neurons chosen, manual ReLU & Sigmoid | **Complete** | $[128, 64]$ hidden units, custom ReLU & Sigmoid |
-| **Task 2.5** | Initialize weights & biases with small random values from scratch | **Complete** | He/Xavier normal scaling & zero biases |
+| **Task 2.4** | Hidden layers/neurons chosen, manual ReLU & Sigmoid | **Complete** | $[128, 128]$ hidden units, custom ReLU, Sigmoid & derivatives |
+| **Task 2.5** | Initialize weights & biases with small random values from scratch | **Complete** | He/Xavier normal scaling & Gaussian noise biases |
