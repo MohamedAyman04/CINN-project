@@ -43,8 +43,23 @@ The objective of this course project is **Image Colorization**: training a neura
 
 ---
 
+## Task 2 Summary: Neural Network Architecture (From Scratch)
+* **Class:** `NeuralNetwork` implemented in pure NumPy matrix arithmetic (`@`).
+* **Topology:** $256 \to 128 \text{ (ReLU)} \to 128 \text{ (ReLU)} \to 768 \text{ (Sigmoid)}$ (**148,480** trainable parameters).
+* **Initialization:** He normal for ReLU hidden layers, Xavier normal for Sigmoid output layer, and small Gaussian biases ($\sigma = 0.01$).
+
+---
+
+## Task 3 Summary: Backpropagation (From Scratch)
+* **Loss:** Element-wise Mean Squared Error (MSE) $\mathcal{L} = \frac{1}{m \cdot D}\sum (\hat{Y} - Y)^2$.
+* **Gradient Verification:** Analytical chain-rule backpropagation verified against central finite differences (`1.64e-07` max relative error).
+* **Training:** 300 epochs of mini-batch gradient descent (`LEARNING_RATE = 15.0`) with validation evaluated after each epoch and a single test evaluation pass at the end.
+* **Results:** Validation MSE decreased from `0.070611` to `0.014522`; Final Test MSE = `0.015382`.
+
+---
+
 ## Running in Kaggle
 1. Open or upload `CINN_WS2026_Project_404_Intelligence_Not_Found.ipynb` in Kaggle.
 2. In the top right corner of the Kaggle notebook, click **`+ Add Input`**.
 3. Search for **`cifar-10-python`** and click **Add** (the dataset mounts to `/kaggle/input/...`).
-4. Run the Task 1 cell block. It directly accesses the Kaggle input without downloading anything, performs the preprocessing, plots distributions inline, splits, and batches the data ready for Task 2.
+4. Run the Task 1, Task 2, and Task 3 cells sequentially.

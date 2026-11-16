@@ -11,12 +11,14 @@ def get_b64_image(path):
 img_pairs_b64 = get_b64_image("task1_sanity_check_pairs.png")
 img_dist_b64 = get_b64_image("task1_pixel_distributions.png")
 img_task2_b64 = get_b64_image("task2_initial_predictions.png")
+img_task3_curve_b64 = get_b64_image("task3_training_curve.png")
+img_task3_preview_b64 = get_b64_image("task3_trained_preview.png")
 
 html_content = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>CINN Course Project Report — Tasks 1 & 2</title>
+<title>CINN Course Project Report — Tasks 1, 2 & 3</title>
 <style>
     @page {{
         size: A4;
@@ -194,11 +196,11 @@ html_content = f"""<!DOCTYPE html>
         </tr>
         <tr>
             <td class="label">Milestone Scope:</td>
-            <td><strong>Task 1 (Dataset & Splitting) & Task 2 (Neural Network Architecture)</strong></td>
+            <td><strong>Tasks 1, 2 & 3 (Dataset, NN Architecture & Backpropagation From Scratch)</strong></td>
         </tr>
         <tr>
-            <td class="label">Task 2 Deadline:</td>
-            <td>Sunday, November 15, 2026</td>
+            <td class="label">Task 3 Deadline:</td>
+            <td>Sunday, November 29, 2026</td>
         </tr>
         <tr>
             <td class="label">Team Name:</td>
@@ -477,7 +479,110 @@ The network was evaluated on batch 0 of the training set (<code>X_train_batches[
     <div class="img-caption">Figure 3: Task 2 Verification — Grayscale Input (top) vs. Initial Untrained Network Prediction (middle) vs. Ground Truth Target (bottom) across 6 sample images.</div>
 </div>
 
-<h2 class="section-title">13. Summary Compliance Matrix (Tasks 1 & 2)</h2>
+<div class="page-break"></div>
+
+<h1 class="part-title">Part III: Task 3 — Backpropagation, Implemented From Scratch (60 Marks)</h1>
+
+<h2 class="section-title">13. Mathematical Derivation of Loss & Analytical Backpropagation</h2>
+<p>
+In accordance with <strong>Task 3</strong> and <strong>Regulation 8</strong>, all loss computations, partial derivatives, chain-rule error propagation, and gradient descent weight updates are derived and executed using plain NumPy matrix arithmetic (<code>@</code>, <code>.T</code>, <code>np.sum</code>) with zero automatic differentiation or external optimizer libraries.
+</p>
+
+<h3 class="subsection-title">13.1 Mean Squared Error (MSE) & Output Error Gradient</h3>
+<p>
+For a mini-batch of <em>m = 100</em> samples and <em>D = 768</em> RGB features, the MSE objective is:
+</p>
+<p style="text-align: center; font-style: italic; background: #F7FAFC; padding: 5px; border-radius: 4px; border: 1px solid #E2E8F0; margin: 4px 0;">
+L(Y&#770;, Y) = (1 / (m &times; D)) &sum;<sub>i=1</sub><sup>m</sup> &sum;<sub>k=1</sub><sup>D</sup> (Y&#770;<sub>ik</sub> &minus; Y<sub>ik</sub>)<sup>2</sup>
+&nbsp;&nbsp;&rArr;&nbsp;&nbsp;
+&part;L / &part;A<sup>[3]</sup> = (2 / (m &times; D)) &times; (A<sup>[3]</sup> &minus; Y)
+</p>
+
+<h3 class="subsection-title">13.2 Layer-by-Layer Chain Rule Propagation</h3>
+<ol>
+    <li><strong>Output Layer (l = 3, Sigmoid):</strong> <code>&delta;<sup>[3]</sup> = (&part;L / &part;A<sup>[3]</sup>) &odot; &sigma;'(Z<sup>[3]</sup>)</code>, where <code>&sigma;'(z) = &sigma;(z)(1 &minus; &sigma;(z))</code>.</li>
+    <li><strong>Parameter Gradients (Layer l &isin; &#123;3, 2, 1&#125;):</strong> <code>&part;L / &part;W<sup>[l]</sup> = (A<sup>[l&minus;1]</sup>)<sup>T</sup> @ &delta;<sup>[l]</sup></code> and <code>&part;L / &part;b<sup>[l]</sup> = &sum;<sub>i=1</sub><sup>m</sup> &delta;<sup>[l]</sup><sub>i,:</sub></code>.</li>
+    <li><strong>Hidden Layers (l &isin; &#123;2, 1&#125;, ReLU):</strong> Upstream activation gradient <code>&part;L / &part;A<sup>[l]</sup> = &delta;<sup>[l+1]</sup> @ (W<sup>[l+1]</sup>)<sup>T</sup></code>, followed by <code>&delta;<sup>[l]</sup> = (&part;L / &part;A<sup>[l]</sup>) &odot; ReLU'(Z<sup>[l]</sup>)</code> where <code>ReLU'(z) = 1 if z &gt; 0 else 0</code>.</li>
+    <li><strong>Gradient Descent Update Rule:</strong> <code>W<sup>[l]</sup> &larr; W<sup>[l]</sup> &minus; &eta; (&part;L / &part;W<sup>[l]</sup>)</code> and <code>b<sup>[l]</sup> &larr; b<sup>[l]</sup> &minus; &eta; (&part;L / &part;b<sup>[l]</sup>)</code>.</li>
+</ol>
+
+<h2 class="section-title">14. Numerical Gradient Check & Learning Rate Tuning</h2>
+<ul>
+    <li><strong>Finite-Difference Verification (&epsilon; = 10<sup>&minus;6</sup>):</strong> Analytical gradients from <code>backward_pass()</code> matched central numerical derivatives <code>(L(w+&epsilon;) &minus; L(w&minus;&epsilon;)) / (2&epsilon;)</code> with a maximum relative error of <strong>1.64 &times; 10<sup>&minus;7</sup></strong> across all layers.</li>
+    <li><strong>Learning Rate Tuning (&eta; = 0.1 &rarr; 15.0):</strong> Because element-wise MSE divides by <code>m &times; D = 76,800</code>, starting around <code>&eta; = 0.1</code> produces tiny steps (40-epoch Val MSE = 0.0559). Sweeping <code>&eta; &isin; &#123;0.1, 1.0, 5.0, 15.0, 30.0, 50.0&#125;</code> identified <strong><code>LEARNING_RATE = 15.0</code></strong> (40-epoch Val MSE = 0.0342; 300-epoch Val MSE = 0.0145) as optimal for smooth, non-oscillating descent.</li>
+</ul>
+
+<h2 class="section-title">15. Mini-Batch Training, Validation & Single Final Test Results</h2>
+<p>
+Training ran for <strong>300 epochs</strong> (14 mini-batches/epoch = 4,200 gradient updates, total runtime <strong>53.77s</strong>), evaluating validation once per epoch and running the held-out test pass <strong>strictly once</strong> after training completed:
+</p>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th class="center-text">Checkpoint</th>
+            <th class="center-text">Training MSE</th>
+            <th class="center-text">Validation MSE</th>
+            <th>Observation</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="center-text"><strong>Untrained (Epoch 0)</strong></td>
+            <td class="center-text">0.071109 (Batch 0)</td>
+            <td class="center-text"><strong>0.070611</strong></td>
+            <td>Random He/Xavier initial baseline</td>
+        </tr>
+        <tr>
+            <td class="center-text">Epoch 1</td>
+            <td class="center-text">0.056027</td>
+            <td class="center-text">0.055031</td>
+            <td>Rapid luminance &amp; bias alignment</td>
+        </tr>
+        <tr>
+            <td class="center-text">Epoch 50</td>
+            <td class="center-text">0.027759</td>
+            <td class="center-text">0.026243</td>
+            <td>Smooth downward trajectory</td>
+        </tr>
+        <tr>
+            <td class="center-text">Epoch 100</td>
+            <td class="center-text">0.020476</td>
+            <td class="center-text">0.020091</td>
+            <td>&gt;71% MSE reduction from baseline</td>
+        </tr>
+        <tr>
+            <td class="center-text">Epoch 200</td>
+            <td class="center-text">0.016072</td>
+            <td class="center-text">0.016346</td>
+            <td>No overfitting (validation tracks training)</td>
+        </tr>
+        <tr style="font-weight: 600; background: #EDF2F7;">
+            <td class="center-text">Epoch 300 (Final)</td>
+            <td class="center-text"><strong>0.013692</strong></td>
+            <td class="center-text"><strong>0.014522</strong></td>
+            <td>Converged (79.4% Val MSE reduction)</td>
+        </tr>
+        <tr style="font-weight: 600; background: #E6FFFA;">
+            <td class="center-text">Final Test Set (Once)</td>
+            <td class="center-text">&mdash;</td>
+            <td class="center-text"><strong>0.015382</strong></td>
+            <td>Held-out Test MSE (200 unseen images)</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="img-container">
+    <img src="{img_task3_curve_b64}" alt="Task 3 Convergence Curve">
+    <div class="img-caption">Figure 4: Task 3 Training &amp; Validation MSE Convergence across 300 epochs (LR = 15.0) alongside Final Test MSE.</div>
+</div>
+
+<div class="img-container">
+    <img src="{img_task3_preview_b64}" alt="Task 3 Test Set Predictions">
+    <div class="img-caption">Figure 5: Visual sanity check on 6 unseen test images after 300 epochs of from-scratch backpropagation (Grayscale Input, Trained Output, True Color).</div>
+</div>
+
+<h2 class="section-title">16. Summary Compliance Matrix (Tasks 1, 2 &amp; 3)</h2>
 <table class="data-table">
     <thead>
         <tr>
@@ -489,76 +594,52 @@ The network was evaluated on batch 0 of the training set (<code>X_train_batches[
     </thead>
     <tbody>
         <tr>
-            <td><strong>Regulation 2</strong></td>
-            <td>Zip file named <code>CINN_WS2026_Project_[Teamname].zip</code></td>
+            <td><strong>Regulation 2 &amp; 5</strong></td>
+            <td>Matching zip &amp; notebook named <code>CINN_WS2026_Project_404_Intelligence_Not_Found</code></td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td>Submission Zip ready</td>
+            <td>Verified</td>
         </tr>
         <tr>
-            <td><strong>Regulation 3 & 4</strong></td>
-            <td>Report with operations, results, team details & grading notes</td>
+            <td><strong>Regulations 3 &amp; 4</strong></td>
+            <td>Report with operations, results, team &amp; instructor details</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td>Sections 1–13 detailed</td>
+            <td>Sections 1–16 detailed</td>
         </tr>
         <tr>
-            <td><strong>Regulation 5</strong></td>
-            <td>Jupyter Notebook named identically to zip file</td>
+            <td><strong>Regulations 6 &amp; 7</strong></td>
+            <td>Single cell per task starting with <code>#Task</code> comments &amp; clear documentation</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td><code>.ipynb</code> verified</td>
-        </tr>
-        <tr>
-            <td><strong>Regulation 6</strong></td>
-            <td>Every task in ONE single cell starting with #Task comments</td>
-            <td class="center-text"><span class="badge">Complete</span></td>
-            <td>Cell 1 (Task 1) & Cell 2 (Task 2)</td>
-        </tr>
-        <tr>
-            <td><strong>Regulation 7</strong></td>
-            <td>Commented code explaining steps</td>
-            <td class="center-text"><span class="badge">Complete</span></td>
-            <td>Clean, student-style comments</td>
+            <td>Cells 2, 5 &amp; 8</td>
         </tr>
         <tr>
             <td><strong>Regulation 8</strong></td>
-            <td>From-scratch NumPy implementation, no pre-built layers</td>
+            <td>Pure NumPy matrix arithmetic (no imported layers or autograd)</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td>Pure NumPy</td>
+            <td>100% from scratch</td>
         </tr>
         <tr>
-            <td><strong>Task 1.1 – 1.6</strong></td>
-            <td>Dataset, Grayscale/RGB, Normalization, Sanity plots, 70/20/10 split, Batches of 100</td>
+            <td><strong>Task 1 (10 Marks)</strong></td>
+            <td>CIFAR-10 Animals (16&times;16), [0,1] norm, BT.601 gray, 70/20/10 split, 14 batches of 100</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td>All 6 steps passed</td>
+            <td>Cell 2 &amp; Figures 1–2</td>
         </tr>
         <tr>
-            <td><strong>Task 2.1</strong></td>
-            <td>Network class built from scratch (no imported layer/model)</td>
+            <td><strong>Task 2 (15 Marks)</strong></td>
+            <td><code>NeuralNetwork</code> [256, 128, 128, 768] (148,480 params), ReLU &amp; Sigmoid, He/Xavier init</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td><code>NeuralNetwork</code> class</td>
+            <td>Cell 5 &amp; Figure 3</td>
         </tr>
         <tr>
-            <td><strong>Task 2.2</strong></td>
-            <td>Input layer size = number of grayscale features</td>
+            <td><strong>Task 3.1 – 3.3</strong></td>
+            <td>Forward pass, MSE loss &amp; chain-rule backward pass wrt every W and b</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td><code>n_in = 256</code></td>
+            <td>Grad check: 1.64e-07</td>
         </tr>
         <tr>
-            <td><strong>Task 2.3</strong></td>
-            <td>Output layer size = number of color values</td>
+            <td><strong>Task 3.4 – 3.6</strong></td>
+            <td>Tuned SGD (LR=15.0), 300 epochs (&ge;10), per-epoch val, single final test pass</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td><code>n_out = 768</code></td>
-        </tr>
-        <tr>
-            <td><strong>Task 2.4</strong></td>
-            <td>Hidden layers/neurons chosen, manual ReLU & Sigmoid</td>
-            <td class="center-text"><span class="badge">Complete</span></td>
-            <td>[128, 128] with ReLU, Sigmoid & derivatives</td>
-        </tr>
-        <tr>
-            <td><strong>Task 2.5</strong></td>
-            <td>Initialize weights & biases with small random values from scratch</td>
-            <td class="center-text"><span class="badge">Complete</span></td>
-            <td>He/Xavier normal scaling & Gaussian noise biases</td>
+            <td>Test MSE: 0.015382</td>
         </tr>
     </tbody>
 </table>

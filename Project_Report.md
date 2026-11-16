@@ -11,8 +11,8 @@
 * **Course:** DMET902 — Advanced Video Processing / CSEN1121 (Winter Semester 2026)
 * **Instructors:** Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary, Eng. Dina Waref Lamei Shalaby
 * **Project Title:** Image Colorization Using From-Scratch Neural Networks & Genetic Algorithm Optimization
-* **Milestone:** **Task 1 — Dataset, Preprocessing, and Splitting (10 Marks)** & **Task 2 — Neural Network Architecture (15 Marks)**
-* **Task 2 Deadline:** Sunday, 15/11/2026
+* **Milestone:** **Task 1 (10 Marks)**, **Task 2 (15 Marks)** & **Task 3 — Backpropagation From Scratch (60 Marks)**
+* **Task 3 Deadline:** Sunday, 29/11/2026
 * **Team Name:** `404 Intelligence Not Found` (Archive: `CINN_WS2026_Project_404_Intelligence_Not_Found`)
 
 ---
@@ -244,20 +244,98 @@ The architecture was evaluated on batch 0 of the training set from Task 1 (`X_tr
 
 ---
 
-## 13. Summary Compliance Matrix (Tasks 1 & 2)
+# Part III: Task 3 — Backpropagation, Implemented From Scratch (60 Marks)
+
+## 14. Mathematical Derivation of Loss & Analytical Backpropagation
+
+To adhere strictly to **Task 3** and **Regulation 8**, all derivatives and gradient descent parameter updates are derived mathematically and implemented using raw NumPy matrix arithmetic (`@`, `.T`, `np.sum`), without any automatic differentiation or pre-built optimizer frameworks.
+
+### 14.1 Mean Squared Error (MSE) Loss
+For a mini-batch of $m = 100$ samples and $D = 768$ RGB pixel outputs, the element-wise Mean Squared Error is:
+$$\mathcal{L}(\hat{Y}, Y) = \frac{1}{m \cdot D} \sum_{i=1}^{m} \sum_{k=1}^{D} (\hat{Y}_{ik} - Y_{ik})^2$$
+
+### 14.2 Chain Rule Gradient Propagation
+Starting at the output predictions $\hat{Y} = A^{[3]}$, the analytical gradient propagates backward from Layer 3 to Layer 1:
+
+1. **Output Layer ($l = 3$, Sigmoid):**
+   $$\frac{\partial \mathcal{L}}{\partial A^{[3]}} = \frac{2}{m \cdot D} (A^{[3]} - Y)$$
+   $$\delta^{[3]} = \frac{\partial \mathcal{L}}{\partial Z^{[3]}} = \frac{\partial \mathcal{L}}{\partial A^{[3]}} \odot \sigma'(Z^{[3]}), \quad \text{where } \sigma'(z) = \sigma(z)(1 - \sigma(z))$$
+
+2. **Parameter Gradients at Layer $l \in \{3, 2, 1\}$:**
+   $$\frac{\partial \mathcal{L}}{\partial W^{[l]}} = \left(A^{[l-1]}\right)^T \delta^{[l]}, \qquad \frac{\partial \mathcal{L}}{\partial b^{[l]}} = \sum_{i=1}^{m} \delta^{[l]}_{i,:}$$
+
+3. **Hidden Layer Backpropagation ($l \in \{2, 1\}$, ReLU):**
+   $$\frac{\partial \mathcal{L}}{\partial A^{[l]}} = \delta^{[l+1]} \left(W^{[l+1]}\right)^T$$
+   $$\delta^{[l]} = \frac{\partial \mathcal{L}}{\partial A^{[l]}} \odot \text{ReLU}'(Z^{[l]}), \quad \text{where } \text{ReLU}'(z) = \mathbb{I}(z > 0)$$
+
+4. **Vanilla Gradient Descent Update:**
+   $$W^{[l]} \leftarrow W^{[l]} - \eta \frac{\partial \mathcal{L}}{\partial W^{[l]}}, \qquad b^{[l]} \leftarrow b^{[l]} - \eta \frac{\partial \mathcal{L}}{\partial b^{[l]}}$$
+
+---
+
+## 15. Numerical Gradient Verification (Finite Differences)
+
+To mathematically prove that the analytical backward pass (`backward_pass`) contains zero chain-rule or matrix-dimension errors, we verified analytical gradients against central finite differences ($\epsilon = 10^{-6}$):
+$$\left.\frac{\partial \mathcal{L}}{\partial w_{rc}}\right|_{\text{num}} \approx \frac{\mathcal{L}(w_{rc} + \epsilon) - \mathcal{L}(w_{rc} - \epsilon)}{2\epsilon}$$
+
+* **Maximum Relative Error across all 3 layers:** **`1.64e-07`** — confirming exact mathematical agreement between analytical backpropagation and numerical differentiation.
+
+---
+
+## 16. Hyperparameter Tuning & Learning Rate Sensitivity
+
+Because element-wise MSE divides the squared-error sum by both batch size and output dimension ($m \times D = 100 \times 768 = 76{,}800$), each gradient entry is scaled by $1 / 76{,}800$. Starting around $\eta = 0.1$ yields very small updates over 40 epochs; therefore, we swept learning rates systematically:
+
+| Learning Rate ($\eta$) | 40-Epoch Train MSE | 40-Epoch Val MSE | Convergence Behavior |
+| :---: | :---: | :---: | :--- |
+| `0.1` | 0.055204 | 0.055945 | Too slow (tiny steps due to $1/(m \cdot D)$ scaling) |
+| `1.0` | 0.052978 | 0.053754 | Slow steady descent |
+| `5.0` | 0.038663 | 0.039408 | Moderate descent |
+| **`15.0` (Selected)** | **0.033454** | **0.034206** | **Smooth, stable, optimal convergence rate** |
+| `30.0` | 0.037210 | 0.038503 | Begins oscillating / overshooting |
+| `50.0` | 0.034824 | 0.035627 | High variance step oscillation |
+
+Selecting **`LEARNING_RATE = 15.0`** (equivalent to an effective per-sample step size of $15.0 / 768 \approx 0.0195$ in sum-squared error) and training for **`EPOCHS = 300`** (far exceeding the 10-epoch minimum) produced smooth, non-divergent optimization.
+
+---
+
+## 17. Training Loop, Epoch Validation & Final Test Results
+
+In strict accordance with Task 3 Requirement 5:
+1. Each epoch iterates sequentially through all **14 mini-batches of 100 samples**, executing one forward pass, MSE computation, backward pass, and gradient descent update per batch (`4,200` total weight updates).
+2. **Validation** (`X_val`, 400 samples) is evaluated **once at the end of every epoch**.
+3. **Testing** (`X_test`, 200 samples) is executed **strictly once** after all 300 training epochs finish.
+
+### Training & Validation Progression:
+| Epoch | Training MSE | Validation MSE | Notes |
+| :---: | :---: | :---: | :--- |
+| **Initial (Untrained)** | — | **0.070611** | Random He/Xavier baseline |
+| **Epoch 1** | 0.056027 | 0.055031 | Rapid initial bias/luminance alignment |
+| **Epoch 25** | 0.034530 | 0.036599 | Strong structural learning |
+| **Epoch 50** | 0.027759 | 0.026243 | Smooth loss descent |
+| **Epoch 100** | 0.020476 | 0.020091 | >71% MSE reduction |
+| **Epoch 150** | 0.017620 | 0.017813 | Generalization tracks training cleanly |
+| **Epoch 200** | 0.016072 | 0.016346 | Continued refinement |
+| **Epoch 250** | 0.014754 | 0.015437 | Fine chrominance tuning |
+| **Epoch 300 (Final)** | **0.013692** | **0.014522** | **Converged (53.77s total runtime)** |
+| **Final Test Pass (Once)** | — | — | **Test MSE = `0.015382` (78.2% reduction)** |
+
+---
+
+## 18. Summary Compliance Matrix (Tasks 1, 2 & 3)
 
 | Regulation / Requirement | Course Specification | Implementation Status | Evidence |
 | :--- | :--- | :---: | :--- |
 | **Regulation 1** | Team of up to 5 students | **Complete** | 5 students listed with IDs, tutorials, emails |
 | **Regulation 2** | Zip file named `CINN_WS2026_Project_[Teamname].zip` | **Complete** | `CINN_WS2026_Project_404_Intelligence_Not_Found.zip` |
-| **Regulations 3 & 4** | Report with operations, results, team details & grading notes | **Complete** | Sections 1–13 with full details |
+| **Regulations 3 & 4** | Report with operations, results, team details & grading notes | **Complete** | Sections 1–18 with full details |
 | **Regulation 5** | Jupyter Notebook named identically to zip file | **Complete** | `CINN_WS2026_Project_404_Intelligence_Not_Found.ipynb` |
-| **Regulation 6** | Every task collected in ONE single cell starting with #Task comments | **Complete** | Cell 1 (Task 1) & Cell 2 (Task 2) |
+| **Regulation 6** | Every task collected in ONE single cell starting with #Task comments | **Complete** | Cell 2 (Task 1), Cell 5 (Task 2), Cell 8 (Task 3) |
 | **Regulation 7** | Commented code explaining steps | **Complete** | Clean, student-style comments |
-| **Regulation 8** | Pure NumPy arithmetic, no pre-built layers | **Complete** | Scratch matrix operations only |
+| **Regulation 8** | Pure NumPy arithmetic, no pre-built layers or autograd | **Complete** | Scratch matrix operations only |
 | **Task 1.1 – 1.6** | Small dataset, Grayscale/RGB, Normalization, Sanity plots, 70/20/10 split, Batches of 100 | **Complete** | CIFAR-10 Animals, $16 \times 16$, 14 batches of 100 |
-| **Task 2.1** | Network class built from scratch (no imported layer/model) | **Complete** | `NeuralNetwork` class in NumPy |
-| **Task 2.2** | Input layer size = number of grayscale features | **Complete** | $n_{\text{in}} = 256$ features |
-| **Task 2.3** | Output layer size = number of color values | **Complete** | $n_{\text{out}} = 768$ features ($16 \times 16 \times 3$) |
-| **Task 2.4** | Hidden layers/neurons chosen, manual ReLU & Sigmoid | **Complete** | $[128, 128]$ hidden units, custom ReLU, Sigmoid & derivatives |
-| **Task 2.5** | Initialize weights & biases with small random values from scratch | **Complete** | He/Xavier normal scaling & Gaussian noise biases |
+| **Task 2.1 – 2.5** | Scratch class, 256 in / 768 out, ReLU & Sigmoid + derivatives, He/Xavier init | **Complete** | `NeuralNetwork` class (148,480 params) |
+| **Task 3.1 – 3.2** | Forward pass & MSE loss | **Complete** | `network.forward(X)` & `compute_mse_loss` |
+| **Task 3.3** | Analytical backward pass via chain rule | **Complete** | `backward_pass` verified (`1.64e-07` error) |
+| **Task 3.4** | Tuned gradient descent weight update | **Complete** | `update_weights` ($\eta = 15.0$) |
+| **Task 3.5 – 3.6** | Per-batch updates, per-epoch validation, single final test pass, $\ge 10$ epochs | **Complete** | 300 epochs; Final Test MSE = `0.015382` |
