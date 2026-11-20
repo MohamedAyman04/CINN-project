@@ -13,12 +13,17 @@ img_dist_b64 = get_b64_image("task1_pixel_distributions.png")
 img_task2_b64 = get_b64_image("task2_initial_predictions.png")
 img_task3_curve_b64 = get_b64_image("task3_training_curve.png")
 img_task3_preview_b64 = get_b64_image("task3_trained_preview.png")
+img_task4_curves_b64 = get_b64_image("task4_learning_curves.png")
+img_task4_colors_b64 = get_b64_image("task4_test_colorizations.png")
+img_task4_hp_b64 = get_b64_image("task4_hyperparameter_study.png")
+img_task5_cmp_b64 = get_b64_image("task5_ga_vs_bp_comparison.png")
+img_task5_vis_b64 = get_b64_image("task5_visual_comparison.png")
 
 html_content = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>CINN Course Project Report — Tasks 1, 2 & 3</title>
+<title>CINN Course Project Report — Tasks 1–5 (Complete Submission)</title>
 <style>
     @page {{
         size: A4;
@@ -196,10 +201,10 @@ html_content = f"""<!DOCTYPE html>
         </tr>
         <tr>
             <td class="label">Milestone Scope:</td>
-            <td><strong>Tasks 1, 2 & 3 (Dataset, NN Architecture & Backpropagation From Scratch)</strong></td>
+            <td><strong>Complete Project Submission — Tasks 1–5 (150 Marks Total)</strong></td>
         </tr>
         <tr>
-            <td class="label">Task 3 Deadline:</td>
+            <td class="label">Final Deadline:</td>
             <td>Sunday, November 29, 2026</td>
         </tr>
         <tr>
@@ -582,64 +587,206 @@ Training ran for <strong>300 epochs</strong> (14 mini-batches/epoch = 4,200 grad
     <div class="img-caption">Figure 5: Visual sanity check on 6 unseen test images after 300 epochs of from-scratch backpropagation (Grayscale Input, Trained Output, True Color).</div>
 </div>
 
-<h2 class="section-title">16. Summary Compliance Matrix (Tasks 1, 2 &amp; 3)</h2>
+<div class="page-break"></div>
+
+<h1 class="part-title">Part IV: Task 4 — Evaluation and Results (25 Marks)</h1>
+
+<h2 class="section-title">16. Learning Curves, Generalization &amp; Final Test Metrics</h2>
+<p>
+Training and validation MSE were recorded across all 300 epochs, and the held-out test set (200 unseen animal images) was evaluated <strong>strictly once</strong> after training converged:
+</p>
+
 <table class="data-table">
     <thead>
         <tr>
-            <th style="width: 20%;">Requirement</th>
-            <th style="width: 50%;">Course Specification</th>
-            <th class="center-text" style="width: 15%;">Status</th>
-            <th style="width: 15%;">Evidence</th>
+            <th>Evaluation Metric</th>
+            <th class="center-text">Value</th>
+            <th>Interpretation &amp; Context</th>
         </tr>
     </thead>
     <tbody>
         <tr>
-            <td><strong>Regulation 2 &amp; 5</strong></td>
-            <td>Matching zip &amp; notebook named <code>CINN_WS2026_Project_404_Intelligence_Not_Found</code></td>
+            <td><strong>Final Test MSE</strong></td>
+            <td class="center-text"><strong>0.015382</strong></td>
+            <td><strong>78.2% reduction</strong> from untrained baseline (0.070611)</td>
+        </tr>
+        <tr>
+            <td><strong>Final Test RMSE / MAE</strong></td>
+            <td class="center-text"><strong>0.124022 / 0.094342</strong></td>
+            <td>Average normalized pixel error on [0, 1]</td>
+        </tr>
+        <tr>
+            <td><strong>Final Test PSNR</strong></td>
+            <td class="center-text"><strong>18.13 dB</strong></td>
+            <td>Peak Signal-to-Noise Ratio across 200 unseen test images</td>
+        </tr>
+        <tr>
+            <td><strong>Per-Channel Test MSE (R / G / B)</strong></td>
+            <td class="center-text"><strong>0.0148 / 0.0112 / 0.0201</strong></td>
+            <td>Green is lowest (58.7% weight in BT.601 gray); Blue is highest (11.4%)</td>
+        </tr>
+        <tr>
+            <td><strong>Generalization Gap (Val &minus; Train)</strong></td>
+            <td class="center-text"><strong>~0.0008</strong></td>
+            <td>Validation (0.014522) tightly tracks training (0.013692) &rarr; zero overfitting</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="img-container">
+    <img src="{img_task4_curves_b64}" alt="Task 4 Learning Curves">
+    <div class="img-caption">Figure 6: Task 4 Training &amp; Validation MSE vs. Epoch (left) and Generalization Gap across 300 epochs (right).</div>
+</div>
+
+<div class="img-container">
+    <img src="{img_task4_colors_b64}" alt="Task 4 10 Test Colorizations">
+    <div class="img-caption">Figure 7: Side-by-side comparison of 10 unseen test images (Grayscale Input, Network Colorized Prediction, True Color Ground Truth).</div>
+</div>
+
+<div class="page-break"></div>
+
+<h2 class="section-title">17. Hyperparameter Sensitivity Study &amp; Observed Limitations</h2>
+<p>
+To isolate which design choices mattered most, we conducted a controlled 30-epoch validation sweep across Learning Rate, Batch Size, and Hidden Width (keeping <code>X_test</code> untouched):
+</p>
+<ul>
+    <li><strong>Learning Rate (Most Critical):</strong> Because element-wise MSE divides gradients by <code>m &times; D = 76,800</code>, <code>LR=0.1</code> barely moved (30-epoch Val MSE = <code>0.056235</code>), whereas <code>LR=15.0</code> descended cleanly (<code>0.038633</code> at epoch 30; <code>0.014522</code> at epoch 300) and <code>LR=30.0</code> introduced step oscillations.</li>
+    <li><strong>Epochs:</strong> Increasing from the 10-epoch minimum (Val MSE <code>0.043586</code>) to 300 epochs (Val MSE <code>0.014522</code>) was essential for sharp luminance &amp; chrominance alignment.</li>
+    <li><strong>Batch Size &amp; Hidden Width:</strong> Smaller mini-batches (<code>B=50</code> &rarr; <code>0.027226</code> at 30 epochs) perform twice as many updates per epoch; wider hidden layers (<code>[256, 128]</code> &rarr; <code>0.032242</code>) provide extra spatial capacity at higher parameter cost.</li>
+    <li><strong>MSE Desaturation &amp; Bottleneck Limitations:</strong> Plain MSE minimizes expected squared pixel error, averaging ambiguous colors toward muted earth/olive tones (visible on vivid pink/yellow objects in Figure 7). Additionally, a dense MLP bottleneck smooths fine edges compared to convolutional U-Nets or Lab-space chrominance prediction.</li>
+</ul>
+
+<div class="img-container">
+    <img src="{img_task4_hp_b64}" alt="Task 4 Hyperparameter Study">
+    <div class="img-caption">Figure 8: Controlled 30-epoch Validation MSE sensitivity across Learning Rate, Batch Size, and Hidden Layer Width.</div>
+</div>
+
+<div class="page-break"></div>
+
+<h1 class="part-title">Part V: Task 5 — Genetic Algorithm Comparison (20 Marks)</h1>
+
+<h2 class="section-title">18. Genetic Algorithm Implementation (From Scratch)</h2>
+<p>
+Preserving the exact <strong>Task 2 architecture</strong> <code>[256, 128, 128, 768]</code> (<strong>148,480</strong> parameters) and the <strong>same MSE error function</strong> as Task 3, we implemented a complete evolutionary optimizer using plain NumPy:
+</p>
+<ul>
+    <li><strong>Chromosome Encoding:</strong> Each individual is a 1D <code>float32</code> vector of 148,480 genes representing all weights and biases, initialized with Task 2 He/Xavier scales.</li>
+    <li><strong>Selection &amp; Crossover:</strong> Tournament Selection (<code>k = 3</code>) combined with Hybrid Crossover (50% uniform gene swap, 50% arithmetic blend <code>&alpha;p<sub>1</sub> + (1&minus;&alpha;)p<sub>2</sub></code>).</li>
+    <li><strong>Mutation &amp; Replacement:</strong> Sparse Gaussian mutation (<code>mut_rate = 0.02</code>) with linearly annealing step size (<code>&sigma;: 0.02 &rarr; 0.005</code>) and elitist generational replacement (<code>ELITISM = 2</code>, <code>POP_SIZE = 20</code>, <code>100</code> generations = 2,000 full-train evaluations).</li>
+</ul>
+
+<h2 class="section-title">19. Empirical Comparison: Backpropagation vs. Genetic Algorithm</h2>
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Comparison Criterion</th>
+            <th class="center-text">Backpropagation (Task 3)</th>
+            <th class="center-text">Genetic Algorithm (Task 5)</th>
+            <th>Key Finding</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Training Budget &amp; Runtime</strong></td>
+            <td class="center-text">300 epochs (<strong>54.10 s</strong>)</td>
+            <td class="center-text">100 gens &times; 20 pop (<strong>36.05 s</strong>)</td>
+            <td>GA evaluates fast in <code>float32</code>, but stalls early</td>
+        </tr>
+        <tr>
+            <td><strong>Convergence Speed</strong></td>
+            <td class="center-text">Continuous drop &rarr; 0.0145</td>
+            <td class="center-text">Plateaus after Gen ~10 at 0.0552</td>
+            <td><strong>Backprop</strong> drops MSE continuously per second</td>
+        </tr>
+        <tr>
+            <td><strong>Final Train / Val MSE</strong></td>
+            <td class="center-text"><strong>0.013692 / 0.014522</strong></td>
+            <td class="center-text">0.054435 / 0.055180</td>
+            <td><strong>Backprop</strong> achieves ~4&times; lower error</td>
+        </tr>
+        <tr style="font-weight: 600; background: #E6FFFA;">
+            <td><strong>Final Held-Out Test MSE</strong></td>
+            <td class="center-text"><strong>0.015382</strong></td>
+            <td class="center-text">0.055276</td>
+            <td><strong>Backprop is 3.6&times; more accurate</strong> on unseen data</td>
+        </tr>
+        <tr>
+            <td><strong>3-Seed Stability (40 iters)</strong></td>
+            <td class="center-text">0.03189 &plusmn; 0.00204</td>
+            <td class="center-text">0.05537 &plusmn; 0.00003</td>
+            <td>GA has tiny seed variance because all runs stall at the mean</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>
+<strong>Why Backpropagation Wins in 148,480 Dimensions:</strong> Backpropagation uses exact first-order partial derivatives (<code>&nabla;<sub>W</sub>L</code>) to adjust all 148,480 parameters in coordinated descent toward natural animal colors. In contrast, a zeroth-order Genetic Algorithm relies on random mutations across 148,480 dimensions without directional guidance—after suppressing initial He/Xavier variance during Generations 1–10, it stagnates near the constant dataset-mean prediction (<code>~0.0552</code>, flat gray-brown outputs).
+</p>
+
+<div class="img-container">
+    <img src="{img_task5_cmp_b64}" alt="Task 5 GA vs Backprop Comparison">
+    <div class="img-caption">Figure 9: Quantitative Comparison — Iteration Trajectory (left), Wall-Clock Convergence Speed (center), and Final Error &amp; 3-Seed Stability (right).</div>
+</div>
+
+<div class="page-break"></div>
+
+<div class="img-container">
+    <img src="{img_task5_vis_b64}" alt="Task 5 Visual Comparison">
+    <div class="img-caption">Figure 10: Visual Comparison on 6 Unseen Test Images — Grayscale Input, Backprop Colorization, Genetic Algorithm Output, and True Color Ground Truth.</div>
+</div>
+
+<h2 class="section-title">20. Final Summary Compliance Matrix (All 150 Marks &mdash; Tasks 1&ndash;5)</h2>
+<table class="data-table">
+    <thead>
+        <tr>
+            <th style="width: 22%;">Requirement</th>
+            <th style="width: 48%;">Course Specification</th>
+            <th class="center-text" style="width: 14%;">Status</th>
+            <th style="width: 16%;">Evidence</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Regulations 1&ndash;5</strong></td>
+            <td>Team of 5, full cover details, report, matching <code>.zip</code> &amp; <code>.ipynb</code> filenames</td>
             <td class="center-text"><span class="badge">Complete</span></td>
             <td>Verified</td>
         </tr>
         <tr>
-            <td><strong>Regulations 3 &amp; 4</strong></td>
-            <td>Report with operations, results, team &amp; instructor details</td>
+            <td><strong>Regulations 6&ndash;8</strong></td>
+            <td>Single cell per task starting with <code>#Task</code> comments; 100% pure NumPy from scratch</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td>Sections 1–16 detailed</td>
-        </tr>
-        <tr>
-            <td><strong>Regulations 6 &amp; 7</strong></td>
-            <td>Single cell per task starting with <code>#Task</code> comments &amp; clear documentation</td>
-            <td class="center-text"><span class="badge">Complete</span></td>
-            <td>Cells 2, 5 &amp; 8</td>
-        </tr>
-        <tr>
-            <td><strong>Regulation 8</strong></td>
-            <td>Pure NumPy matrix arithmetic (no imported layers or autograd)</td>
-            <td class="center-text"><span class="badge">Complete</span></td>
-            <td>100% from scratch</td>
+            <td>Cells 2, 5, 8, 11, 14</td>
         </tr>
         <tr>
             <td><strong>Task 1 (10 Marks)</strong></td>
             <td>CIFAR-10 Animals (16&times;16), [0,1] norm, BT.601 gray, 70/20/10 split, 14 batches of 100</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td>Cell 2 &amp; Figures 1–2</td>
+            <td>Cell 2 &amp; Figs 1&ndash;2</td>
         </tr>
         <tr>
             <td><strong>Task 2 (15 Marks)</strong></td>
             <td><code>NeuralNetwork</code> [256, 128, 128, 768] (148,480 params), ReLU &amp; Sigmoid, He/Xavier init</td>
             <td class="center-text"><span class="badge">Complete</span></td>
-            <td>Cell 5 &amp; Figure 3</td>
+            <td>Cell 5 &amp; Fig 3</td>
         </tr>
         <tr>
-            <td><strong>Task 3.1 – 3.3</strong></td>
-            <td>Forward pass, MSE loss &amp; chain-rule backward pass wrt every W and b</td>
-            <td class="center-text"><span class="badge">Complete</span></td>
-            <td>Grad check: 1.64e-07</td>
-        </tr>
-        <tr>
-            <td><strong>Task 3.4 – 3.6</strong></td>
-            <td>Tuned SGD (LR=15.0), 300 epochs (&ge;10), per-epoch val, single final test pass</td>
+            <td><strong>Task 3 (60 Marks)</strong></td>
+            <td>Forward pass, MSE loss, chain-rule backprop (<code>1.64e-07</code> check), tuned SGD, 300 epochs, single test pass</td>
             <td class="center-text"><span class="badge">Complete</span></td>
             <td>Test MSE: 0.015382</td>
+        </tr>
+        <tr>
+            <td><strong>Task 4 (25 Marks)</strong></td>
+            <td>Loss curves, final test metrics, 10 side-by-side images, hyperparameter study &amp; limitations</td>
+            <td class="center-text"><span class="badge">Complete</span></td>
+            <td>PSNR: 18.13 dB</td>
+        </tr>
+        <tr>
+            <td><strong>Task 5 (20 Marks)</strong></td>
+            <td>From-scratch GA (148,480 chromosomes, selection/crossover/mutation/elitism) &amp; 3-axis comparison</td>
+            <td class="center-text"><span class="badge">Complete</span></td>
+            <td>GA MSE: 0.055276</td>
         </tr>
     </tbody>
 </table>

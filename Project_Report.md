@@ -11,8 +11,8 @@
 * **Course:** DMET902 — Advanced Video Processing / CSEN1121 (Winter Semester 2026)
 * **Instructors:** Prof. Dr. Mohammed Abdel-Megeed Salem, Eng. Yomna Islam Youssef Alayary, Eng. Dina Waref Lamei Shalaby
 * **Project Title:** Image Colorization Using From-Scratch Neural Networks & Genetic Algorithm Optimization
-* **Milestone:** **Task 1 (10 Marks)**, **Task 2 (15 Marks)** & **Task 3 — Backpropagation From Scratch (60 Marks)**
-* **Task 3 Deadline:** Sunday, 29/11/2026
+* **Milestone:** **Complete Project Submission — Tasks 1–5 (150 Marks Total)**
+* **Final Submission Deadline:** Sunday, 29/11/2026
 * **Team Name:** `404 Intelligence Not Found` (Archive: `CINN_WS2026_Project_404_Intelligence_Not_Found`)
 
 ---
@@ -322,20 +322,95 @@ In strict accordance with Task 3 Requirement 5:
 
 ---
 
-## 18. Summary Compliance Matrix (Tasks 1, 2 & 3)
+# Part IV: Task 4 — Evaluation and Results (25 Marks)
+
+## 18. Learning Curves & Generalization Analysis
+
+Training and validation MSE were tracked across all 300 epochs (`task4_learning_curves.png`):
+* **Initial Validation MSE (Untrained):** `0.070611`
+* **Epoch 1:** Training MSE = `0.056027`, Validation MSE = `0.055031`
+* **Epoch 300 (Final):** Training MSE = `0.013692`, Validation MSE = `0.014522`
+* **Generalization Gap:** Throughout the final 150 epochs, the validation-training gap (`Val MSE - Train MSE`) remains tightly bounded around $\mathbf{0.0008}$, confirming that the model generalizes smoothly to unseen images without overfitting.
+
+---
+
+## 19. Final Test Set Error Metrics (200 Unseen Images)
+
+Evaluated **strictly once** after training finished (`X_test`, `Y_test`):
+
+| Evaluation Metric | Value | Notes |
+| :--- | :---: | :--- |
+| **Test Mean Squared Error (MSE)** | **`0.015382`** | **78.2% reduction** from untrained baseline (`0.070611`) |
+| **Test Root Mean Squared Error (RMSE)** | **`0.124022`** | Average pixel deviation on $[0, 1]$ scale |
+| **Test Mean Absolute Error (MAE)** | **`0.094342`** | Mean L1 pixel error |
+| **Test PSNR** | **`18.13 dB`** | Peak Signal-to-Noise Ratio ($10 \log_{10}(1/\text{MSE})$) |
+| **Red Channel Test MSE ($R$)** | `0.014842` | 29.9% weight in grayscale BT.601 input |
+| **Green Channel Test MSE ($G$)** | **`0.011189`** | Lowest error — 58.7% weight in BT.601 luminance |
+| **Blue Channel Test MSE ($B$)** | `0.020114` | Highest error — only 11.4% weight in BT.601 luminance |
+
+**Insight on Per-Channel Error:** Notice how closely channel reconstruction error mirrors the ITU-R BT.601 grayscale formula ($Y = 0.299R + 0.587G + 0.114B$): Green dominates grayscale intensity (`58.7%`) and is reconstructed most accurately (`0.011189`), whereas Blue contributes only `11.4%` to $Y$ and therefore carries the highest uncertainty (`0.020114`).
+
+---
+
+## 20. Visual Results, Hyperparameter Sensitivity & Limitations
+
+Visualizing **10 unseen test images** (`task4_test_colorizations.png` — birds, cats, deer, dogs, frogs) alongside a 30-epoch hyperparameter sweep (`task4_hyperparameter_study.png`) reveals:
+
+### 20.1 Hyperparameter Sensitivity (30-Epoch Validation MSE)
+| Hyperparameter | Tested Values | 30-Epoch Validation MSE | Impact Ranking |
+| :--- | :--- | :--- | :---: |
+| **Learning Rate ($\eta$)** | `0.1`, `5.0`, **`15.0`**, `30.0` | `0.056235`, `0.042331`, `0.038633`, `0.031093` (oscillating) | **1st (Most Critical)** |
+| **Epochs** | `10`, `50`, `150`, **`300`** | `0.043586`, `0.026243`, `0.017813`, **`0.014522`** | **2nd** |
+| **Batch Size ($B$)** | `50`, **`100`**, `200` | `0.027226`, `0.038633`, `0.041450` | **3rd** |
+| **Hidden Width** | `[64, 64]`, **`[128, 128]`**, `[256, 128]` | `0.038114`, `0.038633`, `0.032242` | **4th** |
+
+### 20.2 Observed Limitations
+1. **MSE Desaturation / Regression-to-the-Mean:** Plain MSE minimizes expected squared pixel error, which theoretically drives predictions toward the conditional mean of all plausible colors for a given grayscale patch. Rare or vivid colors (e.g., bright pink collars or saturated sky blues) drift toward muted earth/olive tones.
+2. **Dense Bottleneck Spatial Smoothing:** Passing flattened `256`-pixel inputs through a `128`-neuron dense hidden bottleneck without spatial skip connections slightly smooths sharp high-frequency edges compared to convolutional U-Nets or predicting only $(a, b)$ chrominance in Lab color space.
+
+---
+
+# Part V: Task 5 — Genetic Algorithm Comparison (20 Marks)
+
+## 21. Genetic Algorithm Formulation (Same Architecture & MSE Objective)
+
+To compare gradient-based learning against evolutionary optimization fairly, we kept the **exact same `NeuralNetwork` topology `[256, 128, 128, 768]`** (**148,480** parameters) and **same MSE objective**:
+* **Chromosome Encoding:** Every individual is a 1D `float32` vector of length $148{,}480$ concatenating $(W_1, W_2, W_3, b_1, b_2, b_3)$, initialized with the identical He/Xavier scales from Task 2.
+* **Selection:** Tournament Selection ($k = 3$) selects the fittest individual from 3 random candidates.
+* **Crossover:** Hybrid Crossover (50% uniform gene swap, 50% arithmetic blend $\alpha p_1 + (1 - \alpha) p_2$ with $\alpha \sim \mathcal{U}(0.25, 0.75)$).
+* **Mutation:** Sparse Gaussian perturbation (`mut_rate = 0.02`) with linearly annealing standard deviation ($\sigma: 0.02 \to 0.005$).
+* **Replacement:** Elitist generational replacement (`ELITISM = 2` best chromosomes preserved verbatim; remaining `18` slots filled by offspring).
+* **Execution Budget:** `POP_SIZE = 20`, `GENERATIONS = 100` (`2,000` full training set evaluations across `X_train` in `36.05s`).
+
+---
+
+## 22. Empirical Comparison: Backpropagation vs. Genetic Algorithm
+
+| Comparison Criterion | Backpropagation (Task 3) | Genetic Algorithm (Task 5) | Winner & Explanation |
+| :--- | :---: | :---: | :--- |
+| **Architecture & Params** | `[256, 128, 128, 768]` (`148,480`) | `[256, 128, 128, 768]` (`148,480`) | Identical |
+| **Convergence Speed** | `54.10s` (continuous drop to `0.0145`) | `36.05s` (plateaus after Gen ~10 at `0.0552`) | **Backprop** — reaches far lower MSE per second |
+| **Final Train MSE** | **`0.013692`** | `0.054435` | **Backprop** (`4.0×` lower) |
+| **Final Validation MSE** | **`0.014522`** | `0.055180` | **Backprop** (`3.8×` lower) |
+| **Final Test MSE** | **`0.015382`** | `0.055276` | **Backprop** (`3.6×` lower) |
+| **3-Seed Stability (40 iters)** | `0.03189 ± 0.00204` | `0.05537 ± 0.00003` | **GA** has tighter variance due to elitism & local plateau; **Backprop** trades tiny seed variance for deep optimization |
+
+### Why Backpropagation Outperforms GA in 148,480 Dimensions
+In a 148,480-dimensional continuous space, **backpropagation** computes the exact analytical steepest-descent direction ($\nabla_W \mathcal{L}$) simultaneously for every weight, steadily carving down the loss surface to `0.015382` and reconstructing clear animal structures and natural colors (`task5_visual_comparison.png`). Conversely, **zeroth-order evolutionary search** relies on isotropic random mutations without gradient information: it rapidly suppresses initial random noise during Generations 1–10 (`0.061664 -> 0.0554`) and then stalls near the flat dataset-mean basin (`~0.0552`, producing uniform gray-brown outputs).
+
+---
+
+## 23. Final Summary Compliance Matrix (All 150 Marks — Tasks 1–5)
 
 | Regulation / Requirement | Course Specification | Implementation Status | Evidence |
 | :--- | :--- | :---: | :--- |
 | **Regulation 1** | Team of up to 5 students | **Complete** | 5 students listed with IDs, tutorials, emails |
-| **Regulation 2** | Zip file named `CINN_WS2026_Project_[Teamname].zip` | **Complete** | `CINN_WS2026_Project_404_Intelligence_Not_Found.zip` |
-| **Regulations 3 & 4** | Report with operations, results, team details & grading notes | **Complete** | Sections 1–18 with full details |
-| **Regulation 5** | Jupyter Notebook named identically to zip file | **Complete** | `CINN_WS2026_Project_404_Intelligence_Not_Found.ipynb` |
-| **Regulation 6** | Every task collected in ONE single cell starting with #Task comments | **Complete** | Cell 2 (Task 1), Cell 5 (Task 2), Cell 8 (Task 3) |
-| **Regulation 7** | Commented code explaining steps | **Complete** | Clean, student-style comments |
-| **Regulation 8** | Pure NumPy arithmetic, no pre-built layers or autograd | **Complete** | Scratch matrix operations only |
-| **Task 1.1 – 1.6** | Small dataset, Grayscale/RGB, Normalization, Sanity plots, 70/20/10 split, Batches of 100 | **Complete** | CIFAR-10 Animals, $16 \times 16$, 14 batches of 100 |
-| **Task 2.1 – 2.5** | Scratch class, 256 in / 768 out, ReLU & Sigmoid + derivatives, He/Xavier init | **Complete** | `NeuralNetwork` class (148,480 params) |
-| **Task 3.1 – 3.2** | Forward pass & MSE loss | **Complete** | `network.forward(X)` & `compute_mse_loss` |
-| **Task 3.3** | Analytical backward pass via chain rule | **Complete** | `backward_pass` verified (`1.64e-07` error) |
-| **Task 3.4** | Tuned gradient descent weight update | **Complete** | `update_weights` ($\eta = 15.0$) |
-| **Task 3.5 – 3.6** | Per-batch updates, per-epoch validation, single final test pass, $\ge 10$ epochs | **Complete** | 300 epochs; Final Test MSE = `0.015382` |
+| **Regulation 2 & 5** | Zip & Jupyter Notebook named `CINN_WS2026_Project_404_Intelligence_Not_Found` | **Complete** | `.zip` & `.ipynb` verified |
+| **Regulations 3 & 4** | Report with operations, results, team & instructor details | **Complete** | Sections 1–23 detailed |
+| **Regulation 6 & 7** | ONE single cell per task starting with `#Task` comments & clear comments | **Complete** | Cells 2, 5, 8, 11 & 14 |
+| **Regulation 8** | Pure NumPy matrix arithmetic, no pre-built layers or autograd | **Complete** | 100% from scratch |
+| **Task 1 (10 Marks)** | CIFAR-10 Animals (`16x16`), `[0,1]` norm, BT.601 gray, 70/20/10 split, batches of 100 | **Complete** | Cell 2 |
+| **Task 2 (15 Marks)** | `NeuralNetwork` `[256, 128, 128, 768]` (`148,480` params), ReLU & Sigmoid, He/Xavier init | **Complete** | Cell 5 |
+| **Task 3 (60 Marks)** | Forward pass, MSE, chain-rule backprop (`1.64e-07` check), tuned SGD (`LR=15`), 300 epochs, single test pass | **Complete** | Cell 8 (`Test MSE = 0.015382`) |
+| **Task 4 (25 Marks)** | Loss curves, final test metrics, 10 side-by-side images, hyperparameter study & MSE limitations | **Complete** | Cell 11 (`PSNR = 18.13 dB`) |
+| **Task 5 (20 Marks)** | From-scratch GA (`148,480` chromosomes, selection/crossover/mutation/replacement) & 3-axis comparison | **Complete** | Cell 14 (`GA Test MSE = 0.055276`) |
